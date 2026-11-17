@@ -143,7 +143,10 @@ MOKA Clear:
 - Claude يملك مفتاح IONOS DNS API (محفوظ في بيئة الجلسة). الـ API يدعم DNS فقط، **لا** الإيميل ولا الاستضافة.
 - تم في DNS لـ .de: SPF يشمل `_spf.odoo.com`، وCNAME `odoo._domainkey` → `odoo._domainkey.odoo.com`، وCNAME `www`.
 - الإيميلات المعتمدة: `info@` (العام، ومنه يرسل Odoo) و`leitung@` (الإدارة، يستقبل الطلبات الجديدة مع mouradjdeed@gmail.com، بدل kamel).
-- ⏳ في لوحة IONOS (يدوياً): إنشاء الصندوقين، وتحويل .com، والدومين الفرعي `vorschau`، ومستخدم SFTP.
+- ✅ الصندوقان info@ وleitung@ جاهزان، وتحويل .com → .de يعمل، وتم تأكيد بيانات الاتصال للدومينين.
+- ✅ Odoo: بريد الشركة info@، و`mail.default.from_filter` يشمل moka-objektservice.de، و`moka.notify_emails` = leitung@ + mouradjdeed@gmail.com.
+- ⏳ SSL لـ .de (فُعّل في اللوحة، بانتظار التفعيل الفعلي)، والدومين الفرعي `vorschau`، ومستخدم SFTP.
+- SSL: الاشتراك يشمل شهادة واحدة فقط → لـ .de. الـ .com بلا شهادة حالياً (https://...com يعطي تحذيراً).
 - بعد إنشاء الصناديق: بريد الشركة في Odoo = info@، و`moka.notify_emails` = `leitung@moka-objektservice.de, mouradjdeed@gmail.com`.
 - الموقع التجريبي: `vorschau.moka-objektservice.de` بدون كلمة مرور لكن مع noindex.
 
