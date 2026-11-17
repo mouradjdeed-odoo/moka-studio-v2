@@ -42,11 +42,16 @@ for key, value in DEFAULT_PARAMS.items():
     elif value and key != 'moka.pricing':  # never overwrite prices the owner may have edited
         call('ir.config_parameter', 'write', ids=[found[0]['id']], vals={'value': value})
 
+# Customer emails go out in the company's name from info@ (not the salesperson's Gmail);
+# replies go to Odoo's catchall and are routed to the right record by their headers.
+COMPANY_FROM = '{{ object.company_id.email_formatted or user.company_id.email_formatted }}'
+COMPANY_REPLY_TO = '"Moka Service UG" <catchall@moka-service-ug.odoo.com>'
+
 ns = {}
 exec((HERE / 'templates.py').read_text(), ns)
 for name, vals in ns['TEMPLATES'].items():
     vals = dict(vals, name=name, model_id=lead_model, lang='{{ object.partner_id.lang or "de_DE" }}',
-                email_from='{{ user.company_id.email_formatted }}', partner_to='{{ object.partner_id.id }}',
+                email_from=COMPANY_FROM, reply_to=COMPANY_REPLY_TO, partner_to='{{ object.partner_id.id }}',
                 auto_delete=False)
     found = call('mail.template', 'search', domain=[('name', '=', name)])
     if found:
@@ -72,7 +77,7 @@ if not call('ir.model.fields', 'search', domain=[('model', '=', 'sale.order'), (
                                                   'ttype': 'date', 'model_id': so_model, 'state': 'manual', 'copied': False}])
 for name, vals in ns['SALE_TEMPLATES'].items():
     vals = dict(vals, name=name, model_id=so_model, lang='{{ object.partner_id.lang or "de_DE" }}',
-                email_from='{{ user.company_id.email_formatted }}', partner_to='{{ object.partner_id.id }}', auto_delete=False)
+                email_from=COMPANY_FROM, reply_to=COMPANY_REPLY_TO, partner_to='{{ object.partner_id.id }}', auto_delete=False)
     found = call('mail.template', 'search', domain=[('name', '=', name)])
     call('mail.template', 'write', ids=found, vals=vals) if found else call('mail.template', 'create', vals_list=[vals])
 
@@ -116,3 +121,11 @@ for name, vals, code in RULES:
     call('ir.actions.server', 'write', ids=act, vals=avals) if act else call('ir.actions.server', 'create', vals_list=[avals])
     result[name] = rule
 print(json.dumps(result))
+
+# Standard Odoo customer templates (quotes, orders, invoices, reminders, subscriptions): same sender rule.
+STANDARD = ['Sales: Send Quotation', 'Sales: Send Pro Forma', 'Sales: Order Confirmation', 'Sales: Payment Done',
+            'Invoice: Sending', 'Credit Note: Sending', 'Kind Reminder', 'Second Reminder', 'Last Reminder',
+            'Subscription: Payment Failure', 'Subscription: Payment Reminder', 'Subscription: Default Email Alert']
+ids = call('mail.template', 'search', domain=[('name', 'in', STANDARD)])
+call('mail.template', 'write', ids=ids, vals={'email_from': COMPANY_FROM, 'reply_to': COMPANY_REPLY_TO})
+print('standard templates updated:', len(ids))
