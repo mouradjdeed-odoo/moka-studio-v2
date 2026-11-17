@@ -1,10 +1,14 @@
 export const site = {
   name: 'MOKA Objektservice',
-  phoneDisplay: '030 123 456 78',
-  phoneHref: 'tel:+493012345678',
+  /** Legal entity, for Impressum and Datenschutz. */
+  legalName: 'Moka Service UG',
+  managingDirector: 'Kamel Allam',
+  phoneDisplay: '0163 6666614',
+  phoneHref: 'tel:+491636666614',
+  /** TODO: placeholder until the domain is decided (open decision 11). */
   email: 'info@moka-objektservice.de',
-  street: 'Musterstraße 12',
-  city: '10115 Berlin',
+  street: 'Lietzenburger Straße 29',
+  city: '10789 Berlin',
 }
 
 export const FEATURE_ROTATION_MS = 4000
