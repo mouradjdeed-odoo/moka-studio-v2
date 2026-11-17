@@ -16,7 +16,7 @@ export function Logo({ compact = false, className }: { compact?: boolean; classN
         width={w}
         height={h}
         alt={`${site.name} Berlin`}
-        className={className ?? (compact ? 'h-12 w-auto' : 'h-28 w-auto')}
+        className={className ?? (compact ? 'h-14 w-auto sm:h-16' : 'h-28 w-auto')}
         decoding="async"
       />
     </picture>
