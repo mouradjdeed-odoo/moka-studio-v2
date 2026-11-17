@@ -175,3 +175,12 @@ MOKA Clear:
 ## الخطوة التالية
 
 - بعدها: الإضافات (Impressum/Datenschutz، فوتر احترافي، WhatsApp، الخطوط محلياً، صورة المشاركة، 404 بالألمانية، تحديث الخدمات حسب `docs/SERVICES.md`).
+
+## حماية البيانات (2026-11-17)
+
+- Make: خيار "Data is confidential" مفعّل في السيناريوهين (لا يحفظ محتوى الطلبات). المنطقة eu1.
+- الخطوط محلية في الموقع (@fontsource)، لا اتصال بـ Google.
+- Odoo: مهمة يومية "MOKA: Datenschutz – abgelehnte Anfragen löschen" تحذف الطلبات المرفوضة بلا عروض بعد `moka.retention_days_lost` (180) يوماً.
+- مسودات: `docs/legal/Datenschutz.md` (للموقع) و`docs/legal/Verarbeitungsverzeichnis.md` (داخلي).
+- أُصلح خطأ: حقل honeypot كان يوسّع الصفحة العربية (RTL) فتظهر فارغة.
+- على المالك: قبول AV-Verträge (IONOS وMake وOdoo)، التأكد من منطقة Odoo (Europe)، نقل حسابات Gmail إلى إيميلات الشركة، تفعيل التحقق بخطوتين.

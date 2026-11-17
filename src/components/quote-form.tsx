@@ -953,7 +953,8 @@ export function QuoteForm() {
       </div>
 
       {/* Honeypot against spam bots: hidden from people and assistive tech, bots fill it in. */}
-      <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+      {/* sr-only clips it in place; a far negative offset would widen right-to-left (Arabic) pages. */}
+      <div aria-hidden="true" className="sr-only">
         <label>
           Website
           <input ref={honeypotRef} type="text" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />

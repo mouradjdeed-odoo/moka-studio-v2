@@ -143,6 +143,19 @@ for name, subject in SUBJECTS.items():
     ids = call('mail.template', 'search', domain=[('name', '=', name)])
     call('mail.template', 'write', ids=ids, vals={'subject': subject})
 
+# ---------------- DSGVO: daily deletion of old rejected requests ----------------
+if not call('ir.config_parameter', 'search', domain=[('key', '=', 'moka.retention_days_lost')]):
+    call('ir.config_parameter', 'create', vals_list=[{'key': 'moka.retention_days_lost', 'value': '180'}])
+cron_vals = {'name': 'MOKA: Datenschutz – abgelehnte Anfragen löschen', 'model_id': lead_model, 'state': 'code',
+             'code': (HERE / 'retention.py').read_text(), 'interval_number': 1, 'interval_type': 'days', 'active': True}
+cron = call('ir.cron', 'search', domain=[('name', '=', cron_vals['name'])])
+if cron:
+    call('ir.cron', 'write', ids=cron, vals=cron_vals)
+else:
+    cron = call('ir.cron', 'create', vals_list=[cron_vals])
+call('ir.cron', 'method_direct_trigger', ids=cron)  # runs once now to check the code
+print('retention cron', cron)
+
 # ---------------- AGB on quotes and invoices (link to Odoo's /terms page) ----------------
 import re as _re
 def md_to_html(md):
