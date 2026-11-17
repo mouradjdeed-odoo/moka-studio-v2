@@ -6,6 +6,9 @@ export type CleanScope = (typeof cleanScopes)[number]
 export const buildScopes = ['renovierung', 'trockenbau', 'sanierung', 'glasfaser'] as const
 export type BuildScope = (typeof buildScopes)[number]
 export const serviceTypes = ['recurring', 'onetime'] as const
+/** How full the property is, only asked for MOKA Clear (drives the volume estimate). */
+export const fillLevels = ['low', 'normal', 'full'] as const
+export type FillLevel = (typeof fillLevels)[number]
 
 export type QuoteData = {
   /** Comma-separated business unit ids, at least one required. */
@@ -21,6 +24,8 @@ export type QuoteData = {
   floor: string
   elevator: string
   distance: string
+  /** One of `fillLevels`, only used for MOKA Clear. */
+  fillLevel: string
   name: string
   company: string
   address: string
@@ -43,6 +48,7 @@ export type QuoteErrorCode =
   | 'floor'
   | 'elevator'
   | 'distance'
+  | 'fillLevel'
   | 'name'
   | 'company'
   | 'address'
@@ -73,6 +79,7 @@ export const fieldStep: Record<QuoteField, number> = {
   floor: 1,
   elevator: 1,
   distance: 1,
+  fillLevel: 1,
   name: 2,
   company: 2,
   address: 2,
@@ -91,6 +98,7 @@ export const parseServices = (value: string) => {
 const hasService = (value: string, id: string) => parseServices(value).includes(id)
 
 export const needsDistance = (service: string) => hasService(service, 'clear')
+export const needsFillLevel = (service: string) => hasService(service, 'clear')
 export const needsCleanScope = (service: string) => hasService(service, 'clean')
 export const needsBuildScope = (service: string) => hasService(service, 'build')
 
@@ -123,6 +131,7 @@ export function validateStep(step: number, d: QuoteData, files: FileMeta[]): Quo
     if (!inRange(d.floor, -2, 99, true)) e.floor = 'floor'
     if (d.elevator !== 'yes' && d.elevator !== 'no') e.elevator = 'elevator'
     if (needsDistance(d.service) && !inRange(d.distance, 0, 1000)) e.distance = 'distance'
+    if (needsFillLevel(d.service) && !(fillLevels as readonly string[]).includes(d.fillLevel)) e.fillLevel = 'fillLevel'
   }
   if (step === 2) {
     const name = d.name.trim()

@@ -7,6 +7,9 @@ import {
   Briefcase,
   Building2,
   CalendarCheck,
+  PackageOpen,
+  Boxes,
+  Package,
   Cable,
   Check,
   CheckCircle2,
@@ -37,6 +40,9 @@ import {
   needsBuildScope,
   needsCleanScope,
   needsDistance,
+  needsFillLevel,
+  fillLevels,
+  type FillLevel,
   objectTypes,
   parseBuildScope,
   parseCleanScope,
@@ -66,6 +72,7 @@ const cleanScopeIcons: Record<CleanScope, typeof Sparkles> = {
   winter: Snowflake,
   garten: Leaf,
 }
+const fillLevelIcons: Record<FillLevel, typeof Sparkles> = { low: PackageOpen, normal: Package, full: Boxes }
 const buildScopeIcons: Record<BuildScope, typeof Sparkles> = {
   renovierung: Paintbrush,
   trockenbau: Layers,
@@ -86,6 +93,7 @@ const emptyData: QuoteData = {
   floor: '',
   elevator: '',
   distance: '',
+  fillLevel: '',
   name: '',
   email: '',
   phone: '',
@@ -428,6 +436,9 @@ export function QuoteForm() {
       [f.floor, data.floor],
       [f.elevator, data.elevator === 'yes' ? f.yes : f.no],
       ...(needsDistance(data.service) ? [[f.distance, `${data.distance} ${f.distanceUnit}`]] : []),
+      ...(needsFillLevel(data.service)
+        ? [[f.fillLevel, f.fillLevels[data.fillLevel as FillLevel]?.title]]
+        : []),
     ]
     return (
       <div role="status" className="flex flex-col items-center py-8 text-center animate-in fade-in zoom-in-95 duration-500">
@@ -709,6 +720,30 @@ export function QuoteForm() {
                 </p>
                 <FieldError id="distance-error" message={err('distance')} />
               </div>
+            )}
+
+            {needsFillLevel(data.service) && (
+              <fieldset className="sm:col-span-2 animate-in fade-in duration-300" aria-describedby={described('fillLevel')}>
+                <legend className="mb-3 text-sm font-medium text-foreground">
+                  {f.fillLevel} <span className="text-destructive">*</span>
+                </legend>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {fillLevels.map((level) => (
+                    <ChoiceCard
+                      key={level}
+                      name="fillLevel"
+                      value={level}
+                      checked={data.fillLevel === level}
+                      onChange={(v) => update('fillLevel', v)}
+                      icon={fillLevelIcons[level]}
+                      title={f.fillLevels[level].title}
+                      subtitle={f.fillLevels[level].subtitle}
+                      invalid={!!errors.fillLevel}
+                    />
+                  ))}
+                </div>
+                <FieldError id="fillLevel-error" message={err('fillLevel')} />
+              </fieldset>
             )}
           </div>
         )}

@@ -5,7 +5,7 @@ export type QuoteResult = { ok: true } | { ok: false; errors: QuoteErrors };
 
 const textFields = [
   "service", "objectType", "cleanScope", "buildScope", "serviceType", "units", "area",
-  "floor", "elevator", "distance", "name", "company", "address", "email", "phone", "notes",
+  "floor", "elevator", "distance", "fillLevel", "name", "company", "address", "email", "phone", "notes",
 ] as const;
 
 export const submitQuote = createServerFn({ method: "POST" })

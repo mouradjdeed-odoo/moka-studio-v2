@@ -3,13 +3,21 @@ import { validateStep, MAX_FILES, MAX_FILE_SIZE } from "@/lib/quote";
 
 const base = {
   service: "clear", objectType: "wohnung", cleanScope: "", buildScope: "", serviceType: "onetime",
-  units: "1", area: "50", floor: "0", elevator: "no", distance: "", name: "Max", company: "",
+  units: "1", area: "50", floor: "0", elevator: "no", distance: "", fillLevel: "", name: "Max", company: "",
   address: "Musterstr. 1", email: "a@b.de", phone: "", notes: "Bitte Angebot", privacy: true,
 };
 
 describe("quote rules", () => {
   it("requires distance for MOKA Clear", () => {
     expect(validateStep(1, base, []).distance).toBe("distance");
+  });
+  it("requires a fill level for MOKA Clear", () => {
+    expect(validateStep(1, base, []).fillLevel).toBe("fillLevel");
+    expect(validateStep(1, { ...base, fillLevel: "voll" }, []).fillLevel).toBe("fillLevel");
+    expect(validateStep(1, { ...base, fillLevel: "full" }, []).fillLevel).toBeUndefined();
+  });
+  it("does not ask for a fill level without MOKA Clear", () => {
+    expect(validateStep(1, { ...base, service: "clean" }, []).fillLevel).toBeUndefined();
   });
   it("accepts several business units in one request", () => {
     expect(validateStep(0, { ...base, service: "clean,clear,build", cleanScope: "muell", buildScope: "renovierung" }, [])).toEqual({});
