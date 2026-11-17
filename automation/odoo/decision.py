@@ -27,6 +27,7 @@ else:
         services, scope = lead.x_moka_services or '', lead.x_moka_scope or ''
         units, area, floor, dist = lead.x_moka_units or 0, lead.x_moka_area or 0.0, lead.x_moka_floor or 0, lead.x_moka_distance or 0.0
         lines = []  # (product, qty, unit price or None for the list price, extra description)
+        winter = None
         if 'MOKA Clean' in services:
             c = cfg.get('clean', {})
             if lead.x_moka_service_type == 'recurring':
@@ -37,7 +38,8 @@ else:
                 if 'Hausmeisterservice' in scope:
                     lines.append((P('Hausmeisterservice, Monatspauschale'), 1, max(c['hausmeister']['min'], c['hausmeister']['per_m2'] * area), '%.0f m²' % area))
                 if 'Winterdienst' in scope:
-                    lines.append((P('Winterdienst (Nov.–März), Monatspauschale'), 1, (c['winter']['base'] + c['winter']['per_unit'] * units) / c['winter']['months'], ''))
+                    # Billed only during the season, so it gets its own subscription quote (see below).
+                    winter = (P('Winterdienst (Nov.–März), Monatspauschale'), 1, (c['winter']['base'] + c['winter']['per_unit'] * units) / c['winter']['months'], '%d Einheiten' % units)
                 if 'Gartenpflege' in scope:
                     lines.append((P('Gartenpflege, Monatspauschale'), 1, 0.0, 'Preis nach Besichtigung'))
             else:
@@ -61,30 +63,42 @@ else:
                 lines.append((P(n), 1, None, 'Umfang nach Besichtigung'))
         if 'MOKA Verwaltung' in services:
             lines.append((P('Mietverwaltung (je Einheit / Monat)'), units or 1, None, ''))
-        order_lines = [Command.create({'display_type': 'line_note', 'name': 'Angebot zu Ihrer Anfrage %s – Objekt: %s' % (lead.x_moka_ref, lead.x_moka_object_address or '')})]
-        for prod, qty, price, extra in lines:
-            if not prod:
-                continue
-            vals = {'product_id': prod.id, 'product_uom_qty': qty}
-            if price is not None:
-                vals['price_unit'] = round(price, 2)
-            vals['name'] = '%s\n%s' % (prod.display_name, extra) if extra else prod.display_name
-            order_lines.append(Command.create(vals))
-        recurring = any(l[0] and l[0].recurring_invoice for l in lines)
-        order = env['sale.order'].create({
-            'partner_id': lead.partner_id.id,
-            'opportunity_id': lead.id,
-            'origin': lead.x_moka_ref,
-            'client_order_ref': lead.x_moka_ref,
-            'user_id': lead.user_id.id or env.user.id,
-            'team_id': lead.team_id.id,
-            'plan_id': env['sale.subscription.plan'].search([('billing_period_unit', '=', 'month'), ('billing_period_value', '=', 1)], limit=1).id if recurring else False,
-            'order_line': order_lines,
-        })
-        order.activity_schedule(activity_type_id=todo.id, summary='Angebot prüfen und senden', user_id=lead.user_id.id or env.user.id,
-                                note='Entwurf aus Anfrage %s. Preise sind Schätzungen: bitte prüfen, ggf. anpassen und mit „Senden“ verschicken.' % lead.x_moka_ref)
-        lead.message_post(body='Angebotsentwurf %s erstellt.' % order.name, subtype_xmlid='mail.mt_note')
-        action = {'ok': True, 'message': 'Anfrage %s: Status „In Bearbeitung“. Angebotsentwurf %s wurde erstellt (%.2f € netto). Bitte in Odoo prüfen und an den Kunden senden.' % (lead.x_moka_ref, order.name, order.amount_untaxed)}
+        monthly = env['sale.subscription.plan'].search([('billing_period_unit', '=', 'month'), ('billing_period_value', '=', 1)], limit=1)
+        to_line = lambda prod, qty, price, extra: Command.create(dict(
+            {'product_id': prod.id, 'product_uom_qty': qty,
+             'name': '%s\n%s' % (prod.display_name, extra) if extra else prod.display_name},
+            **({'price_unit': round(price, 2)} if price is not None else {})))
+        base = {'partner_id': lead.partner_id.id, 'opportunity_id': lead.id, 'origin': lead.x_moka_ref,
+                'client_order_ref': lead.x_moka_ref, 'team_id': lead.team_id.id,
+                # No salesperson on the document: customers see only the company (MOKA Objektservice).
+                'user_id': False,
+                # German terms note (Odoo's default note is in the creating user's language).
+                'note': '<p>Es gelten unsere <a href="%s/terms">Allgemeinen Geschäftsbedingungen (AGB)</a> einschließlich der '
+                        'Widerrufsbelehrung für Verbraucher.</p>' % env['ir.config_parameter'].sudo().get_param('web.base.url')}
+        orders = env['sale.order']
+        lines = [l for l in lines if l[0]]
+        if lines:
+            recurring = any(l[0].recurring_invoice for l in lines)
+            orders |= env['sale.order'].create(dict(base, plan_id=monthly.id if recurring else False, order_line=[
+                Command.create({'display_type': 'line_note', 'name': 'Angebot zu Ihrer Anfrage %s – Objekt: %s' % (lead.x_moka_ref, lead.x_moka_object_address or '')})
+            ] + [to_line(*l) for l in lines]))
+        if winter and winter[0]:
+            # Season 1 Nov – 31 Mar: monthly invoices only within the season, then the subscription ends.
+            today = datetime.date.today()
+            if today.month >= 11 or today.month <= 3:
+                start, end_year = today, (today.year + 1 if today.month >= 11 else today.year)
+            else:
+                start, end_year = datetime.date(today.year, 11, 1), today.year + 1
+            orders |= env['sale.order'].create(dict(base, plan_id=monthly.id, start_date=start, end_date=datetime.date(end_year, 3, 31), order_line=[
+                Command.create({'display_type': 'line_note', 'name': 'Winterdienst Saison %d/%02d zu Ihrer Anfrage %s – Objekt: %s. Abrechnung monatlich nur vom %s bis 31.03.%d.'
+                                % (end_year - 1, end_year % 100, lead.x_moka_ref, lead.x_moka_object_address or '', start.strftime('%d.%m.%Y'), end_year)}),
+                to_line(*winter)]))
+        for order in orders:
+            order.activity_schedule(activity_type_id=todo.id, summary='Angebot prüfen und senden', user_id=lead.user_id.id or env.user.id,
+                                    note='Entwurf aus Anfrage %s. Preise sind Schätzungen: bitte prüfen, ggf. anpassen und mit „Senden“ verschicken.' % lead.x_moka_ref)
+        names = ', '.join('%s (%.2f € netto)' % (o.name, o.amount_untaxed) for o in orders)
+        lead.message_post(body='Angebotsentwurf erstellt: %s' % names, subtype_xmlid='mail.mt_note')
+        action = {'ok': True, 'message': 'Anfrage %s: Status „In Bearbeitung“. Angebotsentwurf erstellt: %s. Bitte in Odoo prüfen und an den Kunden senden.' % (lead.x_moka_ref, names or '–')}
     elif a == 'visit':
         lead.write({'stage_id': STAGE_VISIT})
         lead.activity_schedule(activity_type_id=todo.id, summary='Besichtigungstermin vereinbaren', user_id=lead.user_id.id or env.user.id)

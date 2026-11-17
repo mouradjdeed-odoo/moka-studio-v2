@@ -133,6 +133,29 @@ ids = call('mail.template', 'search', domain=[('name', 'in', STANDARD)])
 call('mail.template', 'write', ids=ids, vals={'email_from': COMPANY_FROM, 'reply_to': COMPANY_REPLY_TO})
 print('standard templates updated:', len(ids))
 
+# German subjects with the brand name for the main customer documents.
+SUBJECTS = {
+    'Sales: Send Quotation': "{{ 'MOKA Objektservice – Ihr Angebot' if object.state in ('draft', 'sent') else 'MOKA Objektservice – Ihre Auftragsbestätigung' }} {{ object.name }}",
+    'Sales: Order Confirmation': 'MOKA Objektservice – Ihre Auftragsbestätigung {{ object.name }}',
+    'Invoice: Sending': 'MOKA Objektservice – Rechnung {{ object.name or \'\' }}',
+}
+for name, subject in SUBJECTS.items():
+    ids = call('mail.template', 'search', domain=[('name', '=', name)])
+    call('mail.template', 'write', ids=ids, vals={'subject': subject})
+
+# ---------------- DSGVO: daily deletion of old rejected requests ----------------
+if not call('ir.config_parameter', 'search', domain=[('key', '=', 'moka.retention_days_lost')]):
+    call('ir.config_parameter', 'create', vals_list=[{'key': 'moka.retention_days_lost', 'value': '180'}])
+cron_vals = {'name': 'MOKA: Datenschutz – abgelehnte Anfragen löschen', 'model_id': lead_model, 'state': 'code',
+             'code': (HERE / 'retention.py').read_text(), 'interval_number': 1, 'interval_type': 'days', 'active': True}
+cron = call('ir.cron', 'search', domain=[('name', '=', cron_vals['name'])])
+if cron:
+    call('ir.cron', 'write', ids=cron, vals=cron_vals)
+else:
+    cron = call('ir.cron', 'create', vals_list=[cron_vals])
+call('ir.cron', 'method_direct_trigger', ids=cron)  # runs once now to check the code
+print('retention cron', cron)
+
 # ---------------- AGB on quotes and invoices (link to Odoo's /terms page) ----------------
 import re as _re
 def md_to_html(md):
@@ -160,27 +183,50 @@ if not call('ir.config_parameter', 'search', domain=[('key', '=', 'moka.contract
     # '0' until a lawyer has reviewed docs/legal/Rahmenvertrag.md; then set to '1'.
     call('ir.config_parameter', 'create', vals_list=[{'key': 'moka.contract_active', 'value': '0'}])
 import base64, subprocess, tempfile
+LOGO_LIGHT = HERE.parent.parent / 'public' / 'brand' / 'moka-logo-light.jpg'
+
+
+def run_code(code, context):
+    """Runs Python inside Odoo through a one-off server action. Needed for binary data, which the
+    JSON-2 API rejects ("_check_contents"); b64decode is available inside Odoo."""
+    model_id = call('ir.model', 'search', domain=[('model', '=', 'res.company')])[0]
+    action_id = call('ir.actions.server', 'create', vals_list=[{'name': 'MOKA setup (temporary)', 'model_id': model_id,
+                                                                'state': 'code', 'code': code}])[0]
+    try:
+        return call('ir.actions.server', 'run', ids=[action_id], context=context)
+    finally:
+        call('ir.actions.server', 'unlink', ids=[action_id])
+
+
+# Company logo for quotes, invoices and emails (white-background version, made for paper).
+run_code("env.company.write({'logo': env.context['logo']})\naction = {'ok': True}",
+         {'logo': base64.b64encode(LOGO_LIGHT.read_bytes()).decode()})
+print('company logo set')
 role = call('sign.item.role', 'search', domain=[('name', '=', 'Auftraggeber')])
 role = role[0] if role else call('sign.item.role', 'create', vals_list=[{'name': 'Auftraggeber'}])[0]
 with tempfile.TemporaryDirectory() as tmp:
     pdf = pathlib.Path(tmp) / 'Rahmenvertrag.pdf'
     pos = json.loads(subprocess.check_output(['python3', str(HERE / 'contracts' / 'build_contract_pdf.py'),
-                                              str(HERE.parent.parent / 'docs' / 'legal' / 'Rahmenvertrag.md'), str(pdf)]))
+                                              str(HERE.parent.parent / 'docs' / 'legal' / 'Rahmenvertrag.md'), str(pdf),
+                                              str(LOGO_LIGHT)]))
     data = base64.b64encode(pdf.read_bytes()).decode()
+import hashlib
+digest = hashlib.sha256((HERE.parent.parent / 'docs' / 'legal' / 'Rahmenvertrag.md').read_bytes() + LOGO_LIGHT.read_bytes()
+                        + (HERE / 'contracts' / 'build_contract_pdf.py').read_bytes()).hexdigest()
+digest_param = call('ir.config_parameter', 'search_read', domain=[('key', '=', 'moka.contract_pdf_sha256')], fields=['value'])
 old = call('sign.template', 'search', domain=[('name', '=', 'MOKA Rahmenvertrag')])
+if old and digest_param and digest_param[0]['value'] == digest:
+    print('sign template unchanged', old[0])
+    raise SystemExit(0)
+if digest_param:
+    call('ir.config_parameter', 'write', ids=[digest_param[0]['id']], vals={'value': digest})
+else:
+    call('ir.config_parameter', 'create', vals_list=[{'key': 'moka.contract_pdf_sha256', 'value': digest}])
 if old:  # replace the template so the PDF and field positions always match the current text
     call('sign.template', 'write', ids=old, vals={'active': False, 'name': 'MOKA Rahmenvertrag (alt)'})
-# JSON-2 rejects binary uploads ("_check_contents"), so decode the file inside Odoo with a one-off server action.
-lead_model_id = call('ir.model', 'search', domain=[('model', '=', 'crm.lead')])[0]
-tmp_action = call('ir.actions.server', 'create', vals_list=[{
-    'name': 'MOKA setup: upload file', 'model_id': lead_model_id, 'state': 'code',
-    'code': "att = env['ir.attachment'].create({'name': env.context['file_name'], 'raw': b64decode(env.context['file_data']), "
-            "'mimetype': 'application/pdf'})\naction = {'id': att.id}"}])[0]
-try:
-    att = call('ir.actions.server', 'run', ids=[tmp_action],
-               context={'file_name': 'Rahmenvertrag MOKA Objektservice.pdf', 'file_data': data})['id']
-finally:
-    call('ir.actions.server', 'unlink', ids=[tmp_action])
+att = run_code("att = env['ir.attachment'].create({'name': env.context['file_name'], 'raw': b64decode(env.context['file_data']), "
+               "'mimetype': 'application/pdf'})\naction = {'id': att.id}",
+               {'file_name': 'Rahmenvertrag MOKA Objektservice.pdf', 'file_data': data})['id']
 tpl = call('sign.template', 'create', vals_list=[{'name': 'MOKA Rahmenvertrag'}])[0]
 doc = call('sign.document', 'create', vals_list=[{'template_id': tpl, 'attachment_id': att}])[0]
 types = {t['auto_field'] or t['item_type']: t['id'] for t in call('sign.item.type', 'search_read', domain=[], fields=['item_type', 'auto_field'])}

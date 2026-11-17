@@ -79,6 +79,17 @@ else:
                                   'lang': 'de_DE'})
     elif s('phone') and not partner.phone:
         partner.write({'phone': s('phone')})
+    # Invoice address: the billing address if given, else the property address ("Straße Nr, PLZ Ort").
+    addr = s('billingAddress') or s('address')
+    if addr and not partner.street:
+        parts = [x.strip() for x in addr.split(',') if x.strip()]
+        last = parts[-1].split(' ', 1) if parts else []
+        avals = {'country_id': env.ref('base.de').id}
+        if len(parts) >= 2 and len(last) == 2 and last[0].isdigit() and len(last[0]) == 5:
+            avals.update({'street': ', '.join(parts[:-1]), 'zip': last[0], 'city': last[1].strip()})
+        else:
+            avals['street'] = addr
+        partner.write(avals)
 
     # ---- opportunity ----
     FILL = {'low': 'low', 'normal': 'normal', 'full': 'full'}
@@ -132,7 +143,7 @@ else:
         rows = [
             ('Anfrage-Nr.', lead.x_moka_ref), ('Leistung', units_label), ('Bereiche', scope_label),
             ('Auftragsart', dict(recurring='Regelmäßig', onetime='Einmalig').get(s('serviceType'), '')),
-            ('Objekt', s('objectType')), ('Objektadresse', s('address')), ('Einheiten', s('units')),
+            ('Objekt', s('objectType')), ('Objektadresse', s('address')), ('Rechnungsadresse', s('billingAddress') or 'wie Objektadresse'), ('Einheiten', s('units')),
             ('Fläche', '%s m²' % s('area')), ('Etage', s('floor')), ('Fahrstuhl', 'Ja' if s('elevator') == 'yes' else 'Nein'),
             ('Entfernung', s('distance') and '%s km' % s('distance')), ('Füllgrad', s('fillLevel')),
             ('Name', name), ('Firma', s('company')), ('E-Mail', email), ('Telefon', s('phone')),

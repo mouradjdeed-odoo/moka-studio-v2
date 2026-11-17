@@ -10,7 +10,7 @@ for so in records:
     lead = so.opportunity_id
     if lead and lead.active and not lead.stage_id.is_won:
         lead.action_set_won()
-    user_id = so.user_id.id or env.user.id
+    user_id = so.user_id.id or so.opportunity_id.user_id.id or env.user.id
     clean_recurring = so.order_line.filtered(lambda l: l.product_id.recurring_invoice and l.product_id.categ_id.name == 'MOKA Clean')
     verwaltung = so.order_line.filtered(lambda l: l.product_id.categ_id.name == 'MOKA Verwaltung')
     if clean_recurring:

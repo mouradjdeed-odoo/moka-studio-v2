@@ -168,8 +168,19 @@ MOKA Clear:
 - عند إرسال العرض: الفرصة ← "Angebot gesendet". عند توقيع الزبون أونلاين: Gewonnen + مشروع ومهام.
 - العقود المستمرة (Clean الشهري): Rahmenvertrag عبر Odoo Sign (القالب "MOKA Rahmenvertrag"). **الإرسال الآلي متوقف** (`moka.contract_active` = 0) حتى يراجع محامٍ `docs/legal/Rahmenvertrag.md`؛ حتى ذلك تُنشأ مهمة للمدير.
 - Verwaltung: مهمة "Verwaltervertrag individuell erstellen" (العقد يحتاج محامياً).
+- Winterdienst (القرار ب): عرض اشتراك **منفصل** يفوتر شهرياً من 1 نوفمبر (أو اليوم إن كنا في الموسم) حتى 31 مارس ثم ينتهي.
+- اللوغو (نسخة الخلفية البيضاء) على عروض الأسعار والفواتير (شعار الشركة في Odoo) وعلى عقد Rahmenvertrag.
 - AGB (مع Widerrufsbelehrung) مسودة في `docs/legal/AGB.md`، ومرتبطة بالعروض والفواتير عبر صفحة /terms في Odoo. **يجب مراجعتها قانونياً قبل الإطلاق.**
 
 ## الخطوة التالية
 
 - بعدها: الإضافات (Impressum/Datenschutz، فوتر احترافي، WhatsApp، الخطوط محلياً، صورة المشاركة، 404 بالألمانية، تحديث الخدمات حسب `docs/SERVICES.md`).
+
+## حماية البيانات (2026-11-17)
+
+- Make: خيار "Data is confidential" مفعّل في السيناريوهين (لا يحفظ محتوى الطلبات). المنطقة eu1.
+- الخطوط محلية في الموقع (@fontsource)، لا اتصال بـ Google.
+- Odoo: مهمة يومية "MOKA: Datenschutz – abgelehnte Anfragen löschen" تحذف الطلبات المرفوضة بلا عروض بعد `moka.retention_days_lost` (180) يوماً.
+- مسودات: `docs/legal/Datenschutz.md` (للموقع) و`docs/legal/Verarbeitungsverzeichnis.md` (داخلي).
+- أُصلح خطأ: حقل honeypot كان يوسّع الصفحة العربية (RTL) فتظهر فارغة.
+- على المالك: قبول AV-Verträge (IONOS وMake وOdoo)، التأكد من منطقة Odoo (Europe)، نقل حسابات Gmail إلى إيميلات الشركة، تفعيل التحقق بخطوتين.

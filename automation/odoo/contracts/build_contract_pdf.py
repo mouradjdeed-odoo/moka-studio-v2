@@ -1,7 +1,7 @@
 """Renders docs/legal/Rahmenvertrag.md to a PDF for Odoo Sign and reports where the signature
 block sits (as page ratios), so setup.py can place the Sign fields exactly there.
 
-Usage: python3 build_contract_pdf.py <markdown> <output.pdf>  → prints JSON with field positions.
+Usage: python3 build_contract_pdf.py <markdown> <output.pdf> [logo]  → prints JSON with field positions.
 """
 import json, re, sys
 from reportlab.lib.pagesizes import A4
@@ -48,7 +48,7 @@ def inline(text):
     return re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
 
 
-def build(md_path, out_path):
+def build(md_path, out_path, logo=None):
     story = []
     for raw in open(md_path, encoding='utf-8').read().split('\n'):
         line = raw.strip()
@@ -69,15 +69,21 @@ def build(md_path, out_path):
     story.append(KeepTogether([SignatureBlock()]))
 
     def footer(c, doc):
+        if logo and doc.page == 1:
+            from reportlab.lib.utils import ImageReader
+            img = ImageReader(logo)
+            iw, ih = img.getSize()
+            w = 48 * mm
+            c.drawImage(img, W - 20 * mm - w, H - 8 * mm - w * ih / iw, width=w, height=w * ih / iw)
         c.setFont('Helvetica', 8)
         c.drawString(20 * mm, 12 * mm, 'Moka Service UG (haftungsbeschränkt) · Lietzenburger Straße 29 · 10789 Berlin · info@moka-objektservice.de')
         c.drawRightString(W - 20 * mm, 12 * mm, f'Seite {doc.page}')
 
-    SimpleDocTemplate(out_path, pagesize=A4, leftMargin=20 * mm, rightMargin=20 * mm, topMargin=20 * mm,
+    SimpleDocTemplate(out_path, pagesize=A4, leftMargin=20 * mm, rightMargin=20 * mm, topMargin=(42 if logo else 20) * mm,
                       bottomMargin=22 * mm, title='Rahmenvertrag MOKA Objektservice',
                       author='Moka Service UG').build(story, onFirstPage=footer, onLaterPages=footer)
     return POSITIONS
 
 
 if __name__ == '__main__':
-    print(json.dumps(build(sys.argv[1], sys.argv[2])))
+    print(json.dumps(build(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)))
