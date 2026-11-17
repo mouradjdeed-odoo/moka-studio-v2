@@ -1,0 +1,93 @@
+{
+ "name": "MOKA – Neue Anfrage",
+ "metadata": {
+  "version": 1
+ },
+ "flow": [
+  {
+   "id": 1,
+   "module": "gateway:CustomWebHook",
+   "version": 1,
+   "parameters": {
+    "hook": 4121112,
+    "maxResults": 1
+   },
+   "mapper": {}
+  },
+  {
+   "id": 2,
+   "module": "json:TransformToJSON",
+   "version": 1,
+   "parameters": {
+    "space": ""
+   },
+   "mapper": {
+    "object": "{{1.value}}"
+   }
+  },
+  {
+   "id": 3,
+   "module": "odoo:makeApiCall",
+   "version": 1,
+   "parameters": {
+    "__IMTCONN__": 13119969
+   },
+   "mapper": {
+    "entity": "ir.actions.server",
+    "action": "__custom__",
+    "custom_method": "run",
+    "parameters": "[[662]]",
+    "search_params": "{\"context\": {\"moka_raw\": {{2.json}}, \"moka_token\": \"{{uuid}}\"}}"
+   },
+   "onerror": [
+    {
+     "id": 5,
+     "module": "gateway:WebhookRespond",
+     "version": 1,
+     "parameters": {},
+     "mapper": {
+      "status": 502,
+      "body": "{\"ok\": false}",
+      "headers": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Access-Control-Allow-Origin",
+        "value": "*"
+       }
+      ]
+     }
+    },
+    {
+     "id": 6,
+     "module": "builtin:Rollback",
+     "version": 1,
+     "parameters": {},
+     "mapper": {}
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "module": "gateway:WebhookRespond",
+   "version": 1,
+   "parameters": {},
+   "mapper": {
+    "status": 200,
+    "body": "{\"ok\": true, \"ref\": \"{{3.body.ref}}\"}",
+    "headers": [
+     {
+      "key": "Content-Type",
+      "value": "application/json"
+     },
+     {
+      "key": "Access-Control-Allow-Origin",
+      "value": "*"
+     }
+    ]
+   }
+  }
+ ]
+}

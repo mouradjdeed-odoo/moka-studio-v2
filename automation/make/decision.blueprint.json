@@ -1,0 +1,159 @@
+{
+ "name": "MOKA – Entscheidung",
+ "metadata": {
+  "version": 1,
+  "scenario": {
+   "roundtrips": 1,
+   "maxErrors": 3,
+   "autoCommit": true,
+   "sequential": false,
+   "confidential": false,
+   "dataloss": false,
+   "dlq": false
+  }
+ },
+ "flow": [
+  {
+   "id": 1,
+   "module": "gateway:CustomWebHook",
+   "version": 1,
+   "parameters": {
+    "hook": 4121113,
+    "maxResults": 1
+   },
+   "mapper": {}
+  },
+  {
+   "id": 2,
+   "module": "builtin:BasicRouter",
+   "version": 1,
+   "mapper": {},
+   "routes": [
+    {
+     "flow": [
+      {
+       "id": 3,
+       "module": "json:CreateJSON",
+       "version": 1,
+       "parameters": {
+        "type": 706000,
+        "space": ""
+       },
+       "mapper": {
+        "context": {
+         "moka": {
+          "lead": "{{1.lead}}",
+          "t": "{{1.t}}",
+          "a": "{{1.a}}",
+          "r": "{{1.r}}",
+          "note": "{{1.note}}"
+         }
+        }
+       },
+       "filter": {
+        "name": "Bestätigt",
+        "conditions": [
+         [
+          {
+           "a": "{{1.confirm}}",
+           "o": "text:equal",
+           "b": "1"
+          }
+         ]
+        ]
+       }
+      },
+      {
+       "id": 4,
+       "module": "odoo:makeApiCall",
+       "version": 1,
+       "parameters": {
+        "__IMTCONN__": 13119969
+       },
+       "mapper": {
+        "entity": "ir.actions.server",
+        "action": "__custom__",
+        "custom_method": "run",
+        "parameters": "[[663]]",
+        "search_params": "{{3.json}}"
+       },
+       "onerror": [
+        {
+         "id": 7,
+         "module": "gateway:WebhookRespond",
+         "version": 1,
+         "parameters": {},
+         "mapper": {
+          "status": 500,
+          "body": "<!doctype html><html lang='de'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>MOKA – Entscheidung</title><style>body{font-family:Arial,sans-serif;max-width:480px;margin:40px auto;padding:0 16px;color:#222;line-height:1.5}button{padding:12px 22px;border:0;border-radius:6px;color:#fff;font-weight:bold;font-size:16px;background:#2e7d32;cursor:pointer}select,textarea{width:100%;padding:8px;margin:6px 0 14px;font-size:15px;box-sizing:border-box}.muted{color:#666;font-size:13px}</style></head><body><h2>Fehler</h2><p>Die Aktion konnte nicht ausgeführt werden. Bitte die Anfrage direkt in Odoo bearbeiten.</p></body></html>",
+          "headers": [
+           {
+            "key": "Content-Type",
+            "value": "text/html; charset=utf-8"
+           }
+          ]
+         }
+        },
+        {
+         "id": 8,
+         "module": "builtin:Rollback",
+         "version": 1,
+         "parameters": {},
+         "mapper": {}
+        }
+       ]
+      },
+      {
+       "id": 5,
+       "module": "gateway:WebhookRespond",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "status": 200,
+        "body": "<!doctype html><html lang='de'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>MOKA – Entscheidung</title><style>body{font-family:Arial,sans-serif;max-width:480px;margin:40px auto;padding:0 16px;color:#222;line-height:1.5}button{padding:12px 22px;border:0;border-radius:6px;color:#fff;font-weight:bold;font-size:16px;background:#2e7d32;cursor:pointer}select,textarea{width:100%;padding:8px;margin:6px 0 14px;font-size:15px;box-sizing:border-box}.muted{color:#666;font-size:13px}</style></head><body><h2>{{if(4.body.ok; \"Erledigt\"; \"Nicht möglich\")}}</h2><p>{{4.body.message}}</p><p><a href='https://moka-service-ug.odoo.com/odoo/crm/{{escapeHTML(1.lead)}}'>Anfrage in Odoo öffnen</a></p></body></html>",
+        "headers": [
+         {
+          "key": "Content-Type",
+          "value": "text/html; charset=utf-8"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "flow": [
+      {
+       "id": 6,
+       "module": "gateway:WebhookRespond",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "status": 200,
+        "body": "<!doctype html><html lang='de'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>MOKA – Entscheidung</title><style>body{font-family:Arial,sans-serif;max-width:480px;margin:40px auto;padding:0 16px;color:#222;line-height:1.5}button{padding:12px 22px;border:0;border-radius:6px;color:#fff;font-weight:bold;font-size:16px;background:#2e7d32;cursor:pointer}select,textarea{width:100%;padding:8px;margin:6px 0 14px;font-size:15px;box-sizing:border-box}.muted{color:#666;font-size:13px}</style></head><body><h2>Anfrage bearbeiten</h2><p>Aktion: <b>{{switch(escapeHTML(1.a); \"offer\"; \"Angebot erstellen\"; \"visit\"; \"Besichtigung anbieten\"; \"lost\"; \"Anfrage ablehnen\"; \"Unbekannt\")}}</b></p><form method='post' action='https://hook.eu1.make.com/s3ovwhrj6qj82sv5ebitn9isthsqywco'><input type='hidden' name='lead' value='{{escapeHTML(1.lead)}}'><input type='hidden' name='t' value='{{escapeHTML(1.t)}}'><input type='hidden' name='a' value='{{escapeHTML(1.a)}}'><input type='hidden' name='confirm' value='1'>{{if(escapeHTML(1.a) = \"lost\"; \"<label for='r'>Grund der Absage</label><select id='r' name='r'><option value='1'>Außerhalb des Einsatzgebiets</option><option value='2'>Keine Kapazität</option><option value='3'>Leistung nicht im Angebot</option><option value='4'>Sonstiges</option></select>\"; emptystring)}}<label for='note'>Interne Notiz (optional)</label><textarea id='note' name='note' rows='3'></textarea><button type='submit'>Bestätigen</button></form><p class='muted'>Bei „Besichtigung“ und „Ablehnen“ erhält der Kunde automatisch eine E-Mail.</p></body></html>",
+        "headers": [
+         {
+          "key": "Content-Type",
+          "value": "text/html; charset=utf-8"
+         }
+        ]
+       },
+       "filter": {
+        "name": "Bestätigungsseite",
+        "conditions": [
+         [
+          {
+           "a": "{{1.confirm}}",
+           "o": "text:notequal",
+           "b": "1"
+          }
+         ]
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

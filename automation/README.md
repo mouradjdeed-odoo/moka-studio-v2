@@ -1,0 +1,67 @@
+# MOKA – Automatisierung Website → Make → Odoo
+
+Logik und Daten liegen in **Odoo**; **Make** nimmt nur Anfragen entgegen und leitet sie weiter.
+Das System läuft ohne Claude.
+
+## Ablauf
+
+```
+Website-Formular ──POST (JSON als text/plain)──▶ Make „MOKA – Neue Anfrage“
+   └─▶ Odoo-Serveraktion „MOKA: Neue Anfrage“ (id 662)
+         ├─ Kontakt suchen/anlegen (Sprache Deutsch)
+         ├─ Verkaufschance anlegen: Felder x_moka_*, Anfrage-Nr. A-00000, Anhänge
+         ├─ interne Preisschätzung (Koeffizienten: Systemparameter moka.pricing)
+         ├─ E-Mail an Kunden (Vorlage „MOKA: Anfrage erhalten“, im Chatter sichtbar)
+         └─ E-Mail an Empfänger aus moka.notify_emails mit 3 Buttons
+               [Angebot erstellen] [Besichtigung] [Ablehnen]
+                    │ Link öffnet Bestätigungsseite (Schutz vor Link-Scannern)
+                    ▼
+Make „MOKA – Entscheidung“ ─▶ Odoo-Serveraktion „MOKA: Entscheidung“ (id 663)
+   ├─ Angebot     → Phase „In Bearbeitung“ + Aufgabe „Angebot erstellen“
+   ├─ Besichtigung → Phase „Besichtigung“ + Aufgabe + E-Mail „MOKA: Besichtigung“
+   └─ Ablehnen    → Verloren mit Grund + E-Mail „MOKA: Absage“ (Text je nach Grund)
+
+Odoo-Automatisierungsregeln (Verkauf):
+   Angebot gesendet  → Chance „Angebot gesendet“, Datum x_moka_sent_on
+   Angebot bestätigt/unterschrieben → Chance „Gewonnen“ (+ Projekt & Aufgaben durch das Produkt)
+   4 Tage nach Versand, noch nicht angenommen → E-Mail „MOKA: Angebotserinnerung“
+```
+
+## Wo ändere ich was?
+
+| Was | Wo |
+|---|---|
+| Empfänger der neuen Anfragen (mehrere mit Komma) | Odoo → Einstellungen → Technisch → Systemparameter → `moka.notify_emails` |
+| Preise der Schätzung | Systemparameter `moka.pricing` (JSON) |
+| Texte der Kunden-E-Mails | Odoo → Einstellungen → Technisch → E-Mail-Vorlagen → „MOKA: …“ |
+| Ablauf/Logik | Serveraktionen „MOKA: …“ bzw. Dateien in `automation/odoo/` und `python3 automation/odoo/setup.py` |
+
+`setup.py` ist wiederholbar (idempotent) und überschreibt `moka.pricing` nie.
+
+## Make
+
+| | ID | Webhook-URL |
+|---|---|---|
+| Szenario „MOKA – Neue Anfrage“ | 8623101 | `https://hook.eu1.make.com/8hl0vmgwqtdacmgqathaj58i9jbfk3sg` |
+| Szenario „MOKA – Entscheidung“ | 8623108 | `https://hook.eu1.make.com/s3ovwhrj6qj82sv5ebitn9isthsqywco` |
+| Odoo-Verbindung | 13119969 | API-Schlüssel vom Typ **RPC** |
+| Datenstruktur „MOKA – Entscheidung (Odoo kwargs)“ | 706000 | |
+
+Blueprints: `automation/make/*.blueprint.json`. Bei Fehlern sendet Make eine E-Mail an das Make-Konto;
+der Website-Aufruf bekommt dann `{"ok": false}` (HTTP 502).
+
+## Website-Schnittstelle
+
+`POST https://hook.eu1.make.com/8hl0vmgwqtdacmgqathaj58i9jbfk3sg` mit `Content-Type: text/plain`
+(vermeidet CORS-Preflight) und JSON-Body:
+
+```json
+{"service":"clear","objectType":"wohnung","cleanScope":"","buildScope":"","serviceType":"onetime",
+ "units":"1","area":"60","floor":"3","elevator":"no","distance":"15","fillLevel":"full",
+ "name":"…","company":"","address":"…","email":"…","phone":"","notes":"…",
+ "website":"",            // Honeypot, muss leer bleiben
+ "files":[{"name":"foto.jpg","type":"image/jpeg","data":"<base64>"}]}
+```
+
+Antwort: `{"ok": true, "ref": "A-00012"}`. Make-Webhooks nehmen höchstens ca. 5 MB pro Anfrage an;
+`src/lib/quote-submit.ts` verkleinert Fotos deshalb im Browser (max. 1600 px, JPEG) und begrenzt die Anhänge auf 3,4 MB.
