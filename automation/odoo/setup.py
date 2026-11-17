@@ -160,27 +160,39 @@ if not call('ir.config_parameter', 'search', domain=[('key', '=', 'moka.contract
     # '0' until a lawyer has reviewed docs/legal/Rahmenvertrag.md; then set to '1'.
     call('ir.config_parameter', 'create', vals_list=[{'key': 'moka.contract_active', 'value': '0'}])
 import base64, subprocess, tempfile
+LOGO_LIGHT = HERE.parent.parent / 'public' / 'brand' / 'moka-logo-light.jpg'
+
+
+def run_code(code, context):
+    """Runs Python inside Odoo through a one-off server action. Needed for binary data, which the
+    JSON-2 API rejects ("_check_contents"); b64decode is available inside Odoo."""
+    model_id = call('ir.model', 'search', domain=[('model', '=', 'res.company')])[0]
+    action_id = call('ir.actions.server', 'create', vals_list=[{'name': 'MOKA setup (temporary)', 'model_id': model_id,
+                                                                'state': 'code', 'code': code}])[0]
+    try:
+        return call('ir.actions.server', 'run', ids=[action_id], context=context)
+    finally:
+        call('ir.actions.server', 'unlink', ids=[action_id])
+
+
+# Company logo for quotes, invoices and emails (white-background version, made for paper).
+run_code("env.company.write({'logo': env.context['logo']})\naction = {'ok': True}",
+         {'logo': base64.b64encode(LOGO_LIGHT.read_bytes()).decode()})
+print('company logo set')
 role = call('sign.item.role', 'search', domain=[('name', '=', 'Auftraggeber')])
 role = role[0] if role else call('sign.item.role', 'create', vals_list=[{'name': 'Auftraggeber'}])[0]
 with tempfile.TemporaryDirectory() as tmp:
     pdf = pathlib.Path(tmp) / 'Rahmenvertrag.pdf'
     pos = json.loads(subprocess.check_output(['python3', str(HERE / 'contracts' / 'build_contract_pdf.py'),
-                                              str(HERE.parent.parent / 'docs' / 'legal' / 'Rahmenvertrag.md'), str(pdf)]))
+                                              str(HERE.parent.parent / 'docs' / 'legal' / 'Rahmenvertrag.md'), str(pdf),
+                                              str(LOGO_LIGHT)]))
     data = base64.b64encode(pdf.read_bytes()).decode()
 old = call('sign.template', 'search', domain=[('name', '=', 'MOKA Rahmenvertrag')])
 if old:  # replace the template so the PDF and field positions always match the current text
     call('sign.template', 'write', ids=old, vals={'active': False, 'name': 'MOKA Rahmenvertrag (alt)'})
-# JSON-2 rejects binary uploads ("_check_contents"), so decode the file inside Odoo with a one-off server action.
-lead_model_id = call('ir.model', 'search', domain=[('model', '=', 'crm.lead')])[0]
-tmp_action = call('ir.actions.server', 'create', vals_list=[{
-    'name': 'MOKA setup: upload file', 'model_id': lead_model_id, 'state': 'code',
-    'code': "att = env['ir.attachment'].create({'name': env.context['file_name'], 'raw': b64decode(env.context['file_data']), "
-            "'mimetype': 'application/pdf'})\naction = {'id': att.id}"}])[0]
-try:
-    att = call('ir.actions.server', 'run', ids=[tmp_action],
-               context={'file_name': 'Rahmenvertrag MOKA Objektservice.pdf', 'file_data': data})['id']
-finally:
-    call('ir.actions.server', 'unlink', ids=[tmp_action])
+att = run_code("att = env['ir.attachment'].create({'name': env.context['file_name'], 'raw': b64decode(env.context['file_data']), "
+               "'mimetype': 'application/pdf'})\naction = {'id': att.id}",
+               {'file_name': 'Rahmenvertrag MOKA Objektservice.pdf', 'file_data': data})['id']
 tpl = call('sign.template', 'create', vals_list=[{'name': 'MOKA Rahmenvertrag'}])[0]
 doc = call('sign.document', 'create', vals_list=[{'template_id': tpl, 'attachment_id': att}])[0]
 types = {t['auto_field'] or t['item_type']: t['id'] for t in call('sign.item.type', 'search_read', domain=[], fields=['item_type', 'auto_field'])}

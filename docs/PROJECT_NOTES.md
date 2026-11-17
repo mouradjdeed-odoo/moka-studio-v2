@@ -168,6 +168,8 @@ MOKA Clear:
 - عند إرسال العرض: الفرصة ← "Angebot gesendet". عند توقيع الزبون أونلاين: Gewonnen + مشروع ومهام.
 - العقود المستمرة (Clean الشهري): Rahmenvertrag عبر Odoo Sign (القالب "MOKA Rahmenvertrag"). **الإرسال الآلي متوقف** (`moka.contract_active` = 0) حتى يراجع محامٍ `docs/legal/Rahmenvertrag.md`؛ حتى ذلك تُنشأ مهمة للمدير.
 - Verwaltung: مهمة "Verwaltervertrag individuell erstellen" (العقد يحتاج محامياً).
+- Winterdienst (القرار ب): عرض اشتراك **منفصل** يفوتر شهرياً من 1 نوفمبر (أو اليوم إن كنا في الموسم) حتى 31 مارس ثم ينتهي.
+- اللوغو (نسخة الخلفية البيضاء) على عروض الأسعار والفواتير (شعار الشركة في Odoo) وعلى عقد Rahmenvertrag.
 - AGB (مع Widerrufsbelehrung) مسودة في `docs/legal/AGB.md`، ومرتبطة بالعروض والفواتير عبر صفحة /terms في Odoo. **يجب مراجعتها قانونياً قبل الإطلاق.**
 
 ## الخطوة التالية
