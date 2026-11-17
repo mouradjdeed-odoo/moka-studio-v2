@@ -152,8 +152,8 @@ else:
         env['mail.mail'].sudo().create({
             'subject': 'Neue Anfrage %s: %s · %s' % (lead.x_moka_ref, units_label, name),
             'email_to': to,
-            'email_from': env.company.email_formatted,
-            'reply_to': '"Moka Service UG" <catchall@moka-service-ug.odoo.com>',
+            'email_from': '"MOKA Objektservice" <%s>' % env.company.email,
+            'reply_to': '"MOKA Objektservice" <catchall@moka-service-ug.odoo.com>',
             'body_html': body,
             'model': 'crm.lead', 'res_id': lead.id,
         }).send()

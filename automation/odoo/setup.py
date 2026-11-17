@@ -44,8 +44,11 @@ for key, value in DEFAULT_PARAMS.items():
 
 # Customer emails go out in the company's name from info@ (not the salesperson's Gmail);
 # replies go to Odoo's catchall and are routed to the right record by their headers.
-COMPANY_FROM = '{{ object.company_id.email_formatted or user.company_id.email_formatted }}'
-COMPANY_REPLY_TO = '"Moka Service UG" <catchall@moka-service-ug.odoo.com>'
+# Display name is the brand (as on the logo and website); the legal name stays in signatures,
+# Impressum, quotes and invoices.
+BRAND = 'MOKA Objektservice'
+COMPANY_FROM = '"%s" <{{ object.company_id.email or user.company_id.email }}>' % BRAND
+COMPANY_REPLY_TO = '"%s" <catchall@moka-service-ug.odoo.com>' % BRAND
 
 ns = {}
 exec((HERE / 'templates.py').read_text(), ns)
