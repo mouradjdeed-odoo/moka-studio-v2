@@ -89,6 +89,7 @@ const emptyData: QuoteData = {
   units: '',
   company: '',
   address: '',
+  billingAddress: '',
   area: '',
   floor: '',
   elevator: '',
@@ -430,6 +431,7 @@ export function QuoteForm() {
       [f.serviceType, f.serviceTypes[data.serviceType as keyof typeof f.serviceTypes]?.title],
       [f.units, data.units],
       [f.address, data.address],
+      ...(data.billingAddress.trim() ? [[f.billingAddress, data.billingAddress]] : []),
       ...(data.company.trim() ? [[f.company, data.company]] : []),
       [f.area, `${data.area} ${f.areaUnit}`],
       [f.floor, data.floor],
@@ -794,6 +796,27 @@ export function QuoteForm() {
                 className={inputClass}
               />
               <FieldError id="address-error" message={err('address')} />
+            </div>
+
+            <div className="sm:col-span-2">
+              <Label htmlFor="billingAddress" optional={f.optional}>
+                {f.billingAddress}
+              </Label>
+              <input
+                id="billingAddress"
+                value={data.billingAddress}
+                onChange={(e) => update('billingAddress', e.target.value)}
+                autoComplete="billing street-address"
+                placeholder={f.billingAddressPlaceholder}
+                maxLength={200}
+                aria-invalid={!!errors.billingAddress}
+                aria-describedby={described('billingAddress', 'billingAddress-hint')}
+                className={inputClass}
+              />
+              <p id="billingAddress-hint" className="mt-1.5 text-xs text-muted-foreground">
+                {f.billingAddressHint}
+              </p>
+              <FieldError id="billingAddress-error" message={err('billingAddress')} />
             </div>
 
             <div>

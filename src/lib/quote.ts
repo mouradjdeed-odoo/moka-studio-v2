@@ -29,6 +29,8 @@ export type QuoteData = {
   name: string
   company: string
   address: string
+  /** Optional invoice address; the property address is used when empty. */
+  billingAddress: string
   email: string
   phone: string
   notes: string
@@ -52,6 +54,7 @@ export type QuoteErrorCode =
   | 'name'
   | 'company'
   | 'address'
+  | 'billingAddress'
   | 'email'
   | 'phone'
   | 'notes'
@@ -87,6 +90,7 @@ export const fieldStep: Record<QuoteField, number> = {
   name: 2,
   company: 2,
   address: 2,
+  billingAddress: 2,
   email: 2,
   phone: 2,
   notes: 2,
@@ -143,6 +147,8 @@ export function validateStep(step: number, d: QuoteData, files: FileMeta[]): Quo
     if (d.company.trim().length > 150) e.company = 'company'
     const address = d.address.trim()
     if (address.length < 5 || address.length > 200) e.address = 'address'
+    const billing = d.billingAddress.trim()
+    if (billing && (billing.length < 5 || billing.length > 200)) e.billingAddress = 'billingAddress'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim()) || d.email.length > 200) e.email = 'email'
     if (d.phone.trim() && !/^[+()\d\s/-]{6,30}$/.test(d.phone.trim())) e.phone = 'phone'
     const notes = d.notes.trim()

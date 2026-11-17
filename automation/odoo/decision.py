@@ -69,7 +69,12 @@ else:
              'name': '%s\n%s' % (prod.display_name, extra) if extra else prod.display_name},
             **({'price_unit': round(price, 2)} if price is not None else {})))
         base = {'partner_id': lead.partner_id.id, 'opportunity_id': lead.id, 'origin': lead.x_moka_ref,
-                'client_order_ref': lead.x_moka_ref, 'user_id': lead.user_id.id or env.user.id, 'team_id': lead.team_id.id}
+                'client_order_ref': lead.x_moka_ref, 'team_id': lead.team_id.id,
+                # No salesperson on the document: customers see only the company (MOKA Objektservice).
+                'user_id': False,
+                # German terms note (Odoo's default note is in the creating user's language).
+                'note': '<p>Es gelten unsere <a href="%s/terms">Allgemeinen Geschäftsbedingungen (AGB)</a> einschließlich der '
+                        'Widerrufsbelehrung für Verbraucher.</p>' % env['ir.config_parameter'].sudo().get_param('web.base.url')}
         orders = env['sale.order']
         lines = [l for l in lines if l[0]]
         if lines:

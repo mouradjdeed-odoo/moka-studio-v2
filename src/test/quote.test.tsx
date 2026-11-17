@@ -4,7 +4,7 @@ import { validateStep, MAX_FILES, MAX_FILE_SIZE, MAX_IMAGE_SIZE } from "@/lib/qu
 const base = {
   service: "clear", objectType: "wohnung", cleanScope: "", buildScope: "", serviceType: "onetime",
   units: "1", area: "50", floor: "0", elevator: "no", distance: "", fillLevel: "", name: "Max", company: "",
-  address: "Musterstr. 1", email: "a@b.de", phone: "", notes: "Bitte Angebot", privacy: true,
+  address: "Musterstr. 1", billingAddress: "", email: "a@b.de", phone: "", notes: "Bitte Angebot", privacy: true,
 };
 
 describe("quote rules", () => {
@@ -36,6 +36,11 @@ describe("quote rules", () => {
   it("accepts large photos, which are shrunk before sending", () => {
     expect(validateStep(2, base, [{ size: 12 * 1024 * 1024, type: "image/jpeg" }]).files).toBeUndefined();
     expect(validateStep(2, base, [{ size: MAX_IMAGE_SIZE + 1, type: "image/jpeg" }]).files).toBe("fileSize");
+  });
+  it("treats the billing address as optional but complete when given", () => {
+    expect(validateStep(2, base, []).billingAddress).toBeUndefined();
+    expect(validateStep(2, { ...base, billingAddress: "abc" }, []).billingAddress).toBe("billingAddress");
+    expect(validateStep(2, { ...base, billingAddress: "Kantstr. 5, 10623 Berlin" }, []).billingAddress).toBeUndefined();
   });
   it("requires privacy consent", () => {
     expect(validateStep(2, { ...base, privacy: false }, []).privacy).toBe("privacy");

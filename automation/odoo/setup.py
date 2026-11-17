@@ -133,6 +133,16 @@ ids = call('mail.template', 'search', domain=[('name', 'in', STANDARD)])
 call('mail.template', 'write', ids=ids, vals={'email_from': COMPANY_FROM, 'reply_to': COMPANY_REPLY_TO})
 print('standard templates updated:', len(ids))
 
+# German subjects with the brand name for the main customer documents.
+SUBJECTS = {
+    'Sales: Send Quotation': "{{ 'MOKA Objektservice – Ihr Angebot' if object.state in ('draft', 'sent') else 'MOKA Objektservice – Ihre Auftragsbestätigung' }} {{ object.name }}",
+    'Sales: Order Confirmation': 'MOKA Objektservice – Ihre Auftragsbestätigung {{ object.name }}',
+    'Invoice: Sending': 'MOKA Objektservice – Rechnung {{ object.name or \'\' }}',
+}
+for name, subject in SUBJECTS.items():
+    ids = call('mail.template', 'search', domain=[('name', '=', name)])
+    call('mail.template', 'write', ids=ids, vals={'subject': subject})
+
 # ---------------- AGB on quotes and invoices (link to Odoo's /terms page) ----------------
 import re as _re
 def md_to_html(md):
@@ -187,7 +197,18 @@ with tempfile.TemporaryDirectory() as tmp:
                                               str(HERE.parent.parent / 'docs' / 'legal' / 'Rahmenvertrag.md'), str(pdf),
                                               str(LOGO_LIGHT)]))
     data = base64.b64encode(pdf.read_bytes()).decode()
+import hashlib
+digest = hashlib.sha256((HERE.parent.parent / 'docs' / 'legal' / 'Rahmenvertrag.md').read_bytes() + LOGO_LIGHT.read_bytes()
+                        + (HERE / 'contracts' / 'build_contract_pdf.py').read_bytes()).hexdigest()
+digest_param = call('ir.config_parameter', 'search_read', domain=[('key', '=', 'moka.contract_pdf_sha256')], fields=['value'])
 old = call('sign.template', 'search', domain=[('name', '=', 'MOKA Rahmenvertrag')])
+if old and digest_param and digest_param[0]['value'] == digest:
+    print('sign template unchanged', old[0])
+    raise SystemExit(0)
+if digest_param:
+    call('ir.config_parameter', 'write', ids=[digest_param[0]['id']], vals={'value': digest})
+else:
+    call('ir.config_parameter', 'create', vals_list=[{'key': 'moka.contract_pdf_sha256', 'value': digest}])
 if old:  # replace the template so the PDF and field positions always match the current text
     call('sign.template', 'write', ids=old, vals={'active': False, 'name': 'MOKA Rahmenvertrag (alt)'})
 att = run_code("att = env['ir.attachment'].create({'name': env.context['file_name'], 'raw': b64decode(env.context['file_data']), "
