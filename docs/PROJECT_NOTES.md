@@ -137,6 +137,16 @@ MOKA Clear:
 - إيميل احترافي على الدومين (info@…) بدل Gmail.
 - لافتة موافقة على الكوكيز متوافقة مع DSGVO، فقط إذا أضفنا Analytics.
 
+## الدومين والإيميل (2026-11-17)
+
+- الدومينان على IONOS: `moka-objektservice.de` (الرئيسي) و`moka-objektservice.com` (يُحوَّل إلى .de).
+- Claude يملك مفتاح IONOS DNS API (محفوظ في بيئة الجلسة). الـ API يدعم DNS فقط، **لا** الإيميل ولا الاستضافة.
+- تم في DNS لـ .de: SPF يشمل `_spf.odoo.com`، وCNAME `odoo._domainkey` → `odoo._domainkey.odoo.com`، وCNAME `www`.
+- الإيميلات المعتمدة: `info@` (العام، ومنه يرسل Odoo) و`leitung@` (الإدارة، يستقبل الطلبات الجديدة مع mouradjdeed@gmail.com، بدل kamel).
+- ⏳ في لوحة IONOS (يدوياً): إنشاء الصندوقين، وتحويل .com، والدومين الفرعي `vorschau`، ومستخدم SFTP.
+- بعد إنشاء الصناديق: بريد الشركة في Odoo = info@، و`moka.notify_emails` = `leitung@moka-objektservice.de, mouradjdeed@gmail.com`.
+- الموقع التجريبي: `vorschau.moka-objektservice.de` بدون كلمة مرور لكن مع noindex.
+
 ## الخطوة الحالية: ربط الموقع
 
 - تحويل الموقع إلى static (IONOS لا يشغّل Node) وإرسال النموذج مباشرة إلى Webhook Make (الصيغة في `automation/README.md`).
