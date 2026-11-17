@@ -151,9 +151,16 @@ MOKA Clear:
 - بعد إنشاء الصناديق: بريد الشركة في Odoo = info@، و`moka.notify_emails` = `leitung@moka-objektservice.de, mouradjdeed@gmail.com`.
 - الموقع التجريبي: `vorschau.moka-objektservice.de` بدون كلمة مرور لكن مع noindex.
 
-## الخطوة الحالية: ربط الموقع
+## الموقع: النشر على IONOS (2026-11-17)
 
-- تحويل الموقع إلى static (IONOS لا يشغّل Node) وإرسال النموذج مباشرة إلى Webhook Make (الصيغة في `automation/README.md`).
-- تصغير الصور في المتصفح (حد Make تقريباً 5 MB)، وحقل honeypot باسم `website`.
-- صفحتا Impressum وDatenschutz (ينقص: الرقم الضريبي والسجل التجاري).
-- تحديث خيارات النموذج حسب `docs/SERVICES.md` (مثلاً Gebäudereinigung غير موجودة في نطاقات Clean).
+- القرار: لا دومين فرعي. الموقع يُنشر على `moka-objektservice.de` نفسه (مجلد `public`)، **محمياً بكلمة مرور** (المستخدم `moka`) ومع noindex حتى الإطلاق.
+- `STATIC_EXPORT=1 bun run build` يبني نسخة ثابتة في `.output/public` (لا يؤثر على Lovable).
+- النموذج يرسل مباشرة إلى Webhook Make (`src/lib/quote-submit.ts`)، والصور تُصغَّر في المتصفح (حتى 1600px)، وحقل honeypot `website`، ورقم الطلب يظهر للزبون.
+- أُصلح خطأ قديم: المرفقات كانت تضيع عند اختيارها.
+- النشر التلقائي: `.github/workflows/deploy-ionos.yml` عند كل دمج في `main`. الأسرار المطلوبة: `IONOS_SFTP_HOST`، `IONOS_SFTP_USER`، `IONOS_SFTP_PASSWORD`، `SITE_PASSWORD`.
+- للإطلاق: حذف `SITE_PASSWORD` وإضافة المتغير `SITE_PUBLIC=true`. بدون أحدهما يتوقف النشر (حماية من النشر العلني بالخطأ).
+- ملفات الفيديو `/videos/*.mp4` ما زالت غير موجودة (404)، والصور تظهر بدلها.
+
+## الخطوة الحالية: أسرار GitHub ثم أول نشر
+
+- بعدها: الإضافات (Impressum/Datenschutz، فوتر احترافي، WhatsApp، الخطوط محلياً، صورة المشاركة، 404 بالألمانية، تحديث الخدمات حسب `docs/SERVICES.md`).

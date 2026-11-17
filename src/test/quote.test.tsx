@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateStep, MAX_FILES, MAX_FILE_SIZE } from "@/lib/quote";
+import { validateStep, MAX_FILES, MAX_FILE_SIZE, MAX_IMAGE_SIZE } from "@/lib/quote";
 
 const base = {
   service: "clear", objectType: "wohnung", cleanScope: "", buildScope: "", serviceType: "onetime",
@@ -31,7 +31,11 @@ describe("quote rules", () => {
   it("allows at most 5 files of 5 MB", () => {
     expect(MAX_FILES).toBe(5);
     expect(MAX_FILE_SIZE).toBe(5 * 1024 * 1024);
-    expect(validateStep(2, base, [{ size: MAX_FILE_SIZE + 1, type: "image/png" }]).files).toBe("fileSize");
+    expect(validateStep(2, base, [{ size: MAX_FILE_SIZE + 1, type: "application/pdf" }]).files).toBe("fileSize");
+  });
+  it("accepts large photos, which are shrunk before sending", () => {
+    expect(validateStep(2, base, [{ size: 12 * 1024 * 1024, type: "image/jpeg" }]).files).toBeUndefined();
+    expect(validateStep(2, base, [{ size: MAX_IMAGE_SIZE + 1, type: "image/jpeg" }]).files).toBe("fileSize");
   });
   it("requires privacy consent", () => {
     expect(validateStep(2, { ...base, privacy: false }, []).privacy).toBe("privacy");

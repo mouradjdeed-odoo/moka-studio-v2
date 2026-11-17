@@ -31,7 +31,7 @@ import {
   Wrench,
   X,
 } from 'lucide-react'
-import { submitQuote } from '@/lib/quote.functions'
+import { submitQuote } from '@/lib/quote-submit'
 import { SELECT_SERVICE_EVENT, services, type SelectServiceDetail, type ServiceId } from '@/lib/site'
 import {
   buildScopes,
@@ -316,6 +316,8 @@ export function QuoteForm() {
   const [files, setFiles] = useState<File[]>([])
   const [errors, setErrors] = useState<QuoteErrors>({})
   const [formError, setFormError] = useState(false)
+  const [reference, setReference] = useState('')
+  const honeypotRef = useRef<HTMLInputElement>(null)
   const [done, setDone] = useState(false)
   const [pending, startTransition] = useTransition()
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -381,30 +383,26 @@ export function QuoteForm() {
       return
     }
 
-    const body = new FormData()
-    Object.entries(data).forEach(([k, v]) => body.append(k, String(v)))
-    files.forEach((file) => body.append('files', file))
-
     startTransition(async () => {
-      try {
-        const result = await submitQuote({ data: body })
-        if (result.ok) {
-          setDone(true)
-          return
-        }
-        setErrors(result.errors)
-        setFormError(true)
-        const firstStep = Math.min(...Object.keys(result.errors).map((k) => fieldStep[k as keyof QuoteErrors]))
-        setStep(firstStep)
-      } catch {
-        setFormError(true)
+      const result = await submitQuote(data, files, honeypotRef.current?.value ?? '')
+      if (result.ok) {
+        setReference(result.ref)
+        setDone(true)
+        return
       }
+      if (result.reason === 'tooLarge') {
+        setErrors({ files: 'filesTotal' })
+        setStep(fieldStep.files)
+      }
+      setFormError(true)
     })
   }
 
   const addFiles = (list: FileList | null) => {
     if (!list) return
-    setFiles((prev) => [...prev, ...Array.from(list)])
+    // Copy now: `list` is the input's live FileList, which is emptied when the value is reset below.
+    const picked = Array.from(list)
+    setFiles((prev) => [...prev, ...picked])
     setErrors(({ files: _removed, ...rest }) => rest)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -420,6 +418,7 @@ export function QuoteForm() {
   if (done) {
     const serviceName = services.filter((s) => parseServices(data.service).includes(s.id)).map((s) => s.name).join(', ')
     const summary = [
+      ...(reference ? [[f.reference, reference]] : []),
       [f.service, serviceName],
       ...(needsCleanScope(data.service)
         ? [[f.cleanScope, parseCleanScope(data.cleanScope).map((c) => f.cleanScopes[c].title).join(', ')]]
@@ -928,6 +927,14 @@ export function QuoteForm() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Honeypot against spam bots: hidden from people and assistive tech, bots fill it in. */}
+      <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+        <label>
+          Website
+          <input ref={honeypotRef} type="text" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
+        </label>
       </div>
 
       {formError && (

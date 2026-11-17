@@ -58,6 +58,7 @@ export type QuoteErrorCode =
   | 'files'
   | 'fileSize'
   | 'fileType'
+  | 'filesTotal'
   | 'privacy'
 
 export type QuoteField = keyof QuoteData | 'files'
@@ -65,6 +66,9 @@ export type QuoteErrors = Partial<Record<QuoteField, QuoteErrorCode>>
 
 export const MAX_FILES = 5
 export const MAX_FILE_SIZE = 5 * 1024 * 1024
+/** Photos may be larger: they are shrunk in the browser before sending (see quote-submit.ts). */
+export const MAX_IMAGE_SIZE = 20 * 1024 * 1024
+export const maxSizeFor = (type: string) => (type.startsWith('image/') ? MAX_IMAGE_SIZE : MAX_FILE_SIZE)
 
 const serviceIds = services.map((s) => s.id) as string[]
 
@@ -144,7 +148,7 @@ export function validateStep(step: number, d: QuoteData, files: FileMeta[]): Quo
     const notes = d.notes.trim()
     if (notes.length < 10 || notes.length > 3000) e.notes = 'notes'
     if (files.length > MAX_FILES) e.files = 'files'
-    else if (files.some((f) => f.size > MAX_FILE_SIZE)) e.files = 'fileSize'
+    else if (files.some((f) => f.size > maxSizeFor(f.type))) e.files = 'fileSize'
     else if (files.some((f) => !f.type.startsWith('image/') && f.type !== 'application/pdf')) e.files = 'fileType'
     if (!d.privacy) e.privacy = 'privacy'
   }

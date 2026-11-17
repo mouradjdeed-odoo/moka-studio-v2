@@ -8,6 +8,8 @@ export const site = {
   /** TODO: placeholder until the domain is decided (open decision 11). */
   email: 'info@moka-objektservice.de',
   street: 'Lietzenburger Straße 29',
+  /** Make scenario "MOKA – Neue Anfrage" (see automation/README.md). */
+  quoteWebhook: 'https://hook.eu1.make.com/8hl0vmgwqtdacmgqathaj58i9jbfk3sg',
   city: '10789 Berlin',
 }
 

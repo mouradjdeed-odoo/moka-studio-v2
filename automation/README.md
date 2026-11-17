@@ -63,5 +63,5 @@ der Website-Aufruf bekommt dann `{"ok": false}` (HTTP 502).
  "files":[{"name":"foto.jpg","type":"image/jpeg","data":"<base64>"}]}
 ```
 
-Antwort: `{"ok": true, "ref": "A-00012"}`. Make-Webhooks nehmen höchstens ca. 5 MB pro Anfrage an,
-deshalb müssen Bilder im Browser verkleinert werden.
+Antwort: `{"ok": true, "ref": "A-00012"}`. Make-Webhooks nehmen höchstens ca. 5 MB pro Anfrage an;
+`src/lib/quote-submit.ts` verkleinert Fotos deshalb im Browser (max. 1600 px, JPEG) und begrenzt die Anhänge auf 3,4 MB.
