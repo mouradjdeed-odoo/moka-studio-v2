@@ -145,7 +145,8 @@ MOKA Clear:
 - الإيميلات المعتمدة: `info@` (العام، ومنه يرسل Odoo) و`leitung@` (الإدارة، يستقبل الطلبات الجديدة مع mouradjdeed@gmail.com، بدل kamel).
 - ✅ الصندوقان info@ وleitung@ جاهزان، وتحويل .com → .de يعمل، وتم تأكيد بيانات الاتصال للدومينين.
 - ✅ Odoo: بريد الشركة info@، و`mail.default.from_filter` يشمل moka-objektservice.de، و`moka.notify_emails` = leitung@ + mouradjdeed@gmail.com.
-- ⏳ SSL لـ .de (فُعّل في اللوحة، بانتظار التفعيل الفعلي)، والدومين الفرعي `vorschau`، ومستخدم SFTP.
+- ✅ .de مربوط بمجلد `public` على الـ Webspace، وشهادة SSL Starter **Wildcard** (`*.moka-objektservice.de`، تغطي vorschau) فعّالة حتى 2027-05 (تتجدد تلقائياً).
+- ⏳ الدومين الفرعي `vorschau` ومستخدم SFTP وأسرار GitHub.
 - SSL: الاشتراك يشمل شهادة واحدة فقط → لـ .de. الـ .com بلا شهادة حالياً (https://...com يعطي تحذيراً).
 - بعد إنشاء الصناديق: بريد الشركة في Odoo = info@، و`moka.notify_emails` = `leitung@moka-objektservice.de, mouradjdeed@gmail.com`.
 - الموقع التجريبي: `vorschau.moka-objektservice.de` بدون كلمة مرور لكن مع noindex.
