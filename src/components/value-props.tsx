@@ -10,7 +10,7 @@ export function ValueProps() {
 
   return (
     <>
-      <section id="vorteile" className="scroll-mt-16 bg-ink py-20 text-ink-foreground md:py-28">
+      <section id="vorteile" className="scroll-mt-20 bg-ink py-20 text-ink-foreground md:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold uppercase tracking-widest text-gold">{t.values.eyebrow}</p>
@@ -36,7 +36,7 @@ export function ValueProps() {
         </div>
       </section>
 
-      <section id="ablauf" className="scroll-mt-16 py-20 md:py-28">
+      <section id="ablauf" className="scroll-mt-20 py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold uppercase tracking-widest text-accent">{t.process.eyebrow}</p>

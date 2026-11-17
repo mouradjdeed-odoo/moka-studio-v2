@@ -161,6 +161,15 @@ MOKA Clear:
 - للإطلاق: حذف `SITE_PASSWORD` وإضافة المتغير `SITE_PUBLIC=true`. بدون أحدهما يتوقف النشر (حماية من النشر العلني بالخطأ).
 - ملفات الفيديو `/videos/*.mp4` ما زالت غير موجودة (404)، والصور تظهر بدلها.
 
-## الخطوة الحالية: أسرار GitHub ثم أول نشر
+## عروض الأسعار والعقود (2026-11-17)
+
+- ✅ الموقع منشور على moka-objektservice.de محمياً بكلمة مرور (المستخدم `moka`).
+- زر "Angebot erstellen" يُنشئ **مسودة عرض** في Odoo من بيانات الطلب والمعادلة، مع مهمة "Angebot prüfen und senden". المدير يراجع ويضغط "Senden".
+- عند إرسال العرض: الفرصة ← "Angebot gesendet". عند توقيع الزبون أونلاين: Gewonnen + مشروع ومهام.
+- العقود المستمرة (Clean الشهري): Rahmenvertrag عبر Odoo Sign (القالب "MOKA Rahmenvertrag"). **الإرسال الآلي متوقف** (`moka.contract_active` = 0) حتى يراجع محامٍ `docs/legal/Rahmenvertrag.md`؛ حتى ذلك تُنشأ مهمة للمدير.
+- Verwaltung: مهمة "Verwaltervertrag individuell erstellen" (العقد يحتاج محامياً).
+- AGB (مع Widerrufsbelehrung) مسودة في `docs/legal/AGB.md`، ومرتبطة بالعروض والفواتير عبر صفحة /terms في Odoo. **يجب مراجعتها قانونياً قبل الإطلاق.**
+
+## الخطوة التالية
 
 - بعدها: الإضافات (Impressum/Datenschutz، فوتر احترافي، WhatsApp، الخطوط محلياً، صورة المشاركة، 404 بالألمانية، تحديث الخدمات حسب `docs/SERVICES.md`).

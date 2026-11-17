@@ -17,7 +17,7 @@ export function ContactSection() {
   ]
 
   return (
-    <section id="kontakt" className="scroll-mt-16 bg-secondary py-20 md:py-28">
+    <section id="kontakt" className="scroll-mt-20 bg-secondary py-20 md:py-28">
       <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-12 lg:px-8">
         <div className="lg:col-span-4">
           <p className="text-sm font-semibold uppercase tracking-widest text-accent">{c.eyebrow}</p>

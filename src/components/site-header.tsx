@@ -53,7 +53,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-ink/95 text-ink-foreground backdrop-blur supports-[backdrop-filter]:bg-ink/85">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
         <a href="#top" aria-label={t.nav.home} dir="ltr">
           <Logo compact />
         </a>

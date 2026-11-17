@@ -3,7 +3,7 @@
 Usage: ODOO_URL=https://moka-service-ug.odoo.com ODOO_DB=moka-service-ug ODOO_API_KEY=... python3 setup.py
 (Uses the Odoo 20 JSON-2 API with an RPC API key.)
 """
-import json, os, pathlib, urllib.request
+import json, os, pathlib, urllib.error, urllib.request
 
 URL = os.environ.get('ODOO_URL', 'https://moka-service-ug.odoo.com').rstrip('/')
 DB = os.environ.get('ODOO_DB', 'moka-service-ug')
@@ -15,8 +15,11 @@ def call(model, method, **kw):
     req = urllib.request.Request(
         f'{URL}/json/2/{model}/{method}', data=json.dumps(kw).encode(), method='POST',
         headers={'Content-Type': 'application/json', 'X-Odoo-Database': DB, 'Authorization': f'Bearer {KEY}'})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        raise SystemExit(f'{model}.{method} failed: {json.loads(e.read()).get("message", e)}')
 
 
 lead_model = call('ir.model', 'search', domain=[('model', '=', 'crm.lead')])[0]
@@ -98,10 +101,7 @@ RULES = [
      "        lead.write({'stage_id': 3})\n"),
     ('MOKA: Angebot angenommen', {'trigger': 'on_state_set', 'trigger_field_ids': [(6, 0, [state_field])],
                                   'trg_selection_field_id': sel('sale')},
-     "for so in records:\n"
-     "    lead = so.opportunity_id\n"
-     "    if lead and lead.active and not lead.stage_id.is_won:\n"
-     "        lead.action_set_won()\n"),
+     (HERE / 'order_confirmed.py').read_text()),
     ('MOKA: Angebotserinnerung nach 4 Tagen', {'trigger': 'on_time', 'trg_date_id': sent_on_field, 'trg_date_range': 4,
                                              'trg_date_range_type': 'day', 'trg_date_range_mode': 'after',
                                              'filter_domain': "[('state', '=', 'sent')]"},
@@ -132,3 +132,63 @@ STANDARD = ['Sales: Send Quotation', 'Sales: Send Pro Forma', 'Sales: Order Conf
 ids = call('mail.template', 'search', domain=[('name', 'in', STANDARD)])
 call('mail.template', 'write', ids=ids, vals={'email_from': COMPANY_FROM, 'reply_to': COMPANY_REPLY_TO})
 print('standard templates updated:', len(ids))
+
+# ---------------- AGB on quotes and invoices (link to Odoo's /terms page) ----------------
+import re as _re
+def md_to_html(md):
+    out = []
+    for line in md.splitlines():
+        line = line.strip()
+        if not line or line.startswith('>'):
+            continue
+        t = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        t = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', t)
+        if t.startswith('### '): out.append('<h4>%s</h4>' % t[4:])
+        elif t.startswith('## '): out.append('<h3>%s</h3>' % t[3:])
+        elif t.startswith('# '): out.append('<h2>%s</h2>' % t[2:])
+        else: out.append('<p>%s</p>' % t)
+    return '\n'.join(out)
+
+agb = (HERE.parent.parent / 'docs' / 'legal' / 'AGB.md').read_text()
+call('res.company', 'write', ids=[1], vals={'terms_type': 'html', 'invoice_terms_html': md_to_html(agb)})
+p_terms = call('ir.config_parameter', 'search', domain=[('key', '=', 'account.use_invoice_terms')])
+call('ir.config_parameter', 'write', ids=p_terms, vals={'value': 'True'})
+print('AGB set on company')
+
+# ---------------- Odoo Sign: framework contract for recurring services ----------------
+if not call('ir.config_parameter', 'search', domain=[('key', '=', 'moka.contract_active')]):
+    # '0' until a lawyer has reviewed docs/legal/Rahmenvertrag.md; then set to '1'.
+    call('ir.config_parameter', 'create', vals_list=[{'key': 'moka.contract_active', 'value': '0'}])
+import base64, subprocess, tempfile
+role = call('sign.item.role', 'search', domain=[('name', '=', 'Auftraggeber')])
+role = role[0] if role else call('sign.item.role', 'create', vals_list=[{'name': 'Auftraggeber'}])[0]
+with tempfile.TemporaryDirectory() as tmp:
+    pdf = pathlib.Path(tmp) / 'Rahmenvertrag.pdf'
+    pos = json.loads(subprocess.check_output(['python3', str(HERE / 'contracts' / 'build_contract_pdf.py'),
+                                              str(HERE.parent.parent / 'docs' / 'legal' / 'Rahmenvertrag.md'), str(pdf)]))
+    data = base64.b64encode(pdf.read_bytes()).decode()
+old = call('sign.template', 'search', domain=[('name', '=', 'MOKA Rahmenvertrag')])
+if old:  # replace the template so the PDF and field positions always match the current text
+    call('sign.template', 'write', ids=old, vals={'active': False, 'name': 'MOKA Rahmenvertrag (alt)'})
+# JSON-2 rejects binary uploads ("_check_contents"), so decode the file inside Odoo with a one-off server action.
+lead_model_id = call('ir.model', 'search', domain=[('model', '=', 'crm.lead')])[0]
+tmp_action = call('ir.actions.server', 'create', vals_list=[{
+    'name': 'MOKA setup: upload file', 'model_id': lead_model_id, 'state': 'code',
+    'code': "att = env['ir.attachment'].create({'name': env.context['file_name'], 'raw': b64decode(env.context['file_data']), "
+            "'mimetype': 'application/pdf'})\naction = {'id': att.id}"}])[0]
+try:
+    att = call('ir.actions.server', 'run', ids=[tmp_action],
+               context={'file_name': 'Rahmenvertrag MOKA Objektservice.pdf', 'file_data': data})['id']
+finally:
+    call('ir.actions.server', 'unlink', ids=[tmp_action])
+tpl = call('sign.template', 'create', vals_list=[{'name': 'MOKA Rahmenvertrag'}])[0]
+doc = call('sign.document', 'create', vals_list=[{'template_id': tpl, 'attachment_id': att}])[0]
+types = {t['auto_field'] or t['item_type']: t['id'] for t in call('sign.item.type', 'search_read', domain=[], fields=['item_type', 'auto_field'])}
+items = []
+for key, type_key in [('name', 'name'), ('date', 'date'), ('signature', 'signature')]:
+    p_ = pos[key]
+    items.append({'document_id': doc, 'type_id': types[type_key], 'responsible_id': role, 'required': True,
+                  'page': p_['page'], 'posX': round(p_['posX'], 4), 'posY': round(p_['posY'], 4),
+                  'width': round(p_['width'], 4), 'height': round(p_['height'], 4), 'alignment': 'left'})
+call('sign.item', 'create', vals_list=items)
+print('sign template', tpl, 'document', doc)

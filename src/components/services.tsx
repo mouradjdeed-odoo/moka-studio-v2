@@ -26,7 +26,7 @@ export function Services() {
   if (!current) return null
 
   return (
-    <section id="leistungen" className="scroll-mt-16 py-20 md:py-28">
+    <section id="leistungen" className="scroll-mt-20 py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-2xl">
