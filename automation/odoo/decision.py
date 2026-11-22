@@ -30,19 +30,50 @@ else:
         winter = None
         if 'MOKA Clean' in services:
             c = cfg.get('clean', {})
-            if lead.x_moka_service_type == 'recurring':
-                if 'Treppenhausreinigung' in scope:
-                    lines.append((P('Treppenhausreinigung (wöchentlich), Monatspauschale'), 1, c['treppenhaus']['base'] + c['treppenhaus']['per_unit'] * units, '%d Einheiten' % units))
-                if 'Müllservice' in scope:
-                    lines.append((P('Mülltonnenservice, Monatspauschale'), 1, c['muell']['base'] + c['muell']['per_unit'] * units, '%d Einheiten' % units))
-                if 'Hausmeisterservice' in scope:
-                    lines.append((P('Hausmeisterservice, Monatspauschale'), 1, max(c['hausmeister']['min'], c['hausmeister']['per_m2'] * area), '%.0f m²' % area))
-                if 'Winterdienst' in scope:
-                    # Billed only during the season, so it gets its own subscription quote (see below).
-                    winter = (P('Winterdienst (Nov.–März), Monatspauschale'), 1, (c['winter']['base'] + c['winter']['per_unit'] * units) / c['winter']['months'], '%d Einheiten' % units)
-                if 'Gartenpflege' in scope:
-                    lines.append((P('Gartenpflege, Monatspauschale'), 1, 0.0, 'Preis nach Besichtigung'))
-            else:
+            ci = json.loads(lead.x_moka_clean_input or '{}')
+            n = lambda k: float(str(ci.get(k) or '0').replace(',', '.') or 0)
+            picked = [x.strip() for x in scope.split(',')]
+            FREQ = {'twice_weekly': '2× pro Woche', 'daily': 'täglich (Mo–Fr)', 'three_weekly': '3× pro Woche',
+                    'weekly': 'wöchentlich', 'biweekly': 'alle 2 Wochen', 'quarterly': 'alle 3 Monate', 'monthly': 'monatlich'}
+            if 'Treppenhausreinigung' in picked and 'per_floor' in c.get('treppenhaus', {}):
+                t = c['treppenhaus']
+                floors = int(n('stairwells')) * int(n('storeys'))
+                lines.append((P('Treppenhausreinigung, Monatspauschale'), 1,
+                              (t['base'] + t['per_floor'] * floors) * t['freq'].get(ci.get('stairFrequency'), 1),
+                              '%d Treppenhäuser × %d Etagen, Reinigung %s' % (n('stairwells'), n('storeys'), FREQ.get(ci.get('stairFrequency'), ''))))
+            if 'Müllservice' in picked and 'per_bin' in c.get('muell', {}):
+                lines.append((P('Mülltonnenservice, Monatspauschale'), 1, c['muell']['base'] + c['muell']['per_bin'] * n('bins'), '%d Mülltonnen' % n('bins')))
+            if 'Hausmeisterservice' in picked and 'per_unit' in c.get('hausmeister', {}):
+                lines.append((P('Hausmeisterservice, Monatspauschale'), 1, c['hausmeister']['base'] + c['hausmeister']['per_unit'] * units, '%d Einheiten' % units))
+            if 'Winterdienst' in picked and 'per_m' in c.get('winter', {}):
+                # Billed only during the season, so it gets its own subscription quote (see below).
+                w = c['winter']
+                winter = (P('Winterdienst (Nov.–März), Monatspauschale'), 1, (w['base'] + w['per_m'] * n('sidewalk')) / w['months'],
+                          'ca. %.0f m Gehweg und Wege' % n('sidewalk'))
+            if 'Gartenpflege' in picked:
+                lines.append((P('Gartenpflege, Monatspauschale'), 1, 0.0, 'ca. %.0f m² Grünfläche, Preis nach Besichtigung' % n('gardenArea')))
+            if 'Unterhaltsreinigung' in picked and 'innen' in c:
+                i = c['innen']
+                rate = i['per_m2_visit']['gewerbe' if lead.x_moka_object_type in ('gewerbe', 'gewerbeobjekt') else 'wohnen']
+                visit = max(i['min_visit'], rate * n('interiorArea'))
+                lines.append((P('Unterhaltsreinigung, Monatspauschale'), 1, visit * i['visits'].get(ci.get('interiorFrequency'), 0),
+                              'ca. %.0f m², Reinigung %s' % (n('interiorArea'), FREQ.get(ci.get('interiorFrequency'), ''))))
+            if 'Endreinigung' in picked and 'endreinigung' in c:
+                e = c['endreinigung']
+                lines.append((P('Endreinigung, Pauschale'), 1, e['base'] + e['per_m2'] * n('interiorArea'), 'ca. %.0f m²' % n('interiorArea')))
+            if 'Fensterreinigung' in picked and 'fenster' in c:
+                fz = c['fenster']
+                per = fz['base'] + fz['per_window'] * n('windows') + fz['per_m2_glass'] * n('glassArea')
+                what = '%d Fenster' % n('windows') + (' und ca. %.0f m² Glasflächen' % n('glassArea') if n('glassArea') else '')
+                yearly = fz['per_year'].get(ci.get('windowFrequency'), 1)
+                if yearly > 1:
+                    lines.append((P('Fensterreinigung, Monatspauschale'), 1, per * yearly / 12,
+                                  '%s, Reinigung %s (%.2f € je Reinigung)' % (what, FREQ.get(ci.get('windowFrequency'), ''), per)))
+                else:
+                    lines.append((P('Fensterreinigung, je Reinigung'), 1, per, what))
+            if 'Sonderreinigung' in picked or not any(x in picked for x in (
+                    'Treppenhausreinigung', 'Müllservice', 'Hausmeisterservice', 'Winterdienst', 'Gartenpflege',
+                    'Unterhaltsreinigung', 'Endreinigung', 'Fensterreinigung')):
                 lines.append((P('Reinigung / Hausmeister, Einzelauftrag (Std.)'), 1, None, 'Stunden nach Aufwand anpassen'))
         if 'MOKA Clear' in services:
             c = cfg.get('clear', {})

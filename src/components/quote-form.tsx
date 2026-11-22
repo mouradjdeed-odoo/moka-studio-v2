@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import {
+  AppWindow,
   ArrowLeft,
   ArrowRight,
   Briefcase,
+  Brush,
+  Building,
   Building2,
   CalendarCheck,
   PackageOpen,
@@ -13,6 +16,7 @@ import {
   Cable,
   Check,
   CheckCircle2,
+  DoorOpen,
   Hammer,
   Home,
   Hotel,
@@ -26,6 +30,7 @@ import {
   Send,
   Snowflake,
   Sparkles,
+  SprayCan,
   Trash2,
   Truck,
   Wrench,
@@ -34,21 +39,31 @@ import {
 import { submitQuote } from '@/lib/quote-submit'
 import { SELECT_SERVICE_EVENT, services, type SelectServiceDetail, type ServiceId } from '@/lib/site'
 import {
+  activeCleanScope,
   buildScopes,
-  cleanScopes,
+  cleanScopesFor,
   fieldStep,
+  interiorFrequencies,
+  isObjectTypeOf,
   needsBuildScope,
   needsCleanScope,
   needsDistance,
   needsFillLevel,
+  needsGeneral,
+  needsUnits,
   fillLevels,
   type FillLevel,
-  objectTypes,
+  objectScopes,
+  objectTypesByScope,
+  type ObjectScope,
+  type ObjectType,
   parseBuildScope,
   parseCleanScope,
   parseServices,
   serviceTypes,
+  stairFrequencies,
   validateStep,
+  windowFrequencies,
   type BuildScope,
   type CleanScope,
   type QuoteData,
@@ -64,13 +79,24 @@ const serviceIcons: Record<ServiceId, typeof Sparkles> = {
   build: Hammer,
   verwaltung: Building2,
 }
-const objectIcons = { wohnung: Hotel, haus: Home, gewerbe: Briefcase } as const
+const objectScopeIcons: Record<ObjectScope, typeof Sparkles> = { building: Building, unit: DoorOpen }
+const objectIcons: Record<ObjectType, typeof Sparkles> = {
+  mfh: Building2,
+  efh: Home,
+  gewerbeobjekt: Building,
+  wohnung: Hotel,
+  gewerbe: Briefcase,
+}
 const cleanScopeIcons: Record<CleanScope, typeof Sparkles> = {
   treppenhaus: Sparkles,
   muell: Trash2,
   hausmeister: KeyRound,
   winter: Snowflake,
   garten: Leaf,
+  innen: SprayCan,
+  endreinigung: KeyRound,
+  fenster: AppWindow,
+  sonder: Brush,
 }
 const fillLevelIcons: Record<FillLevel, typeof Sparkles> = { low: PackageOpen, normal: Package, full: Boxes }
 const buildScopeIcons: Record<BuildScope, typeof Sparkles> = {
@@ -82,6 +108,7 @@ const buildScopeIcons: Record<BuildScope, typeof Sparkles> = {
 
 const emptyData: QuoteData = {
   service: '',
+  objectScope: '',
   objectType: '',
   cleanScope: '',
   buildScope: '',
@@ -95,6 +122,17 @@ const emptyData: QuoteData = {
   elevator: '',
   distance: '',
   fillLevel: '',
+  stairwells: '',
+  storeys: '',
+  stairFrequency: '',
+  bins: '',
+  sidewalk: '',
+  gardenArea: '',
+  interiorArea: '',
+  interiorFrequency: '',
+  windows: '',
+  glassArea: '',
+  windowFrequency: '',
   name: '',
   email: '',
   phone: '',
@@ -227,6 +265,110 @@ function UnitInput({
           {unit}
         </span>
       )}
+    </div>
+  )
+}
+
+/** Compact single-choice buttons, e.g. for a cleaning frequency. */
+function PillGroup<T extends string>({
+  name,
+  legend,
+  options,
+  labels,
+  value,
+  onChange,
+  error,
+}: {
+  name: string
+  legend: string
+  options: readonly T[]
+  labels: Record<T, string>
+  value: string
+  onChange: (v: T) => void
+  error?: string | undefined
+}) {
+  return (
+    <fieldset className="sm:col-span-2" aria-describedby={error ? `${name}-error` : undefined}>
+      <legend className="mb-3 text-sm font-medium text-foreground">
+        {legend} <span className="text-destructive">*</span>
+      </legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map((opt) => (
+          <label
+            key={opt}
+            className={cn(
+              'flex cursor-pointer items-center justify-center rounded-md border px-4 py-2.5 text-sm font-semibold transition-colors has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-accent/30',
+              value === opt
+                ? 'border-accent bg-accent text-accent-foreground'
+                : 'border-border bg-background text-primary hover:border-accent/50',
+              error && value !== opt && 'border-destructive/60',
+            )}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={opt}
+              checked={value === opt}
+              onChange={() => onChange(opt)}
+              className="sr-only"
+            />
+            {labels[opt]}
+          </label>
+        ))}
+      </div>
+      <FieldError id={`${name}-error`} message={error} />
+    </fieldset>
+  )
+}
+
+/** Labelled number input with an optional hint and unit. */
+function NumberField({
+  id,
+  label,
+  value,
+  onChange,
+  unit,
+  hint,
+  error,
+  optional,
+  min,
+  max,
+  step,
+}: {
+  id: string
+  label: string
+  value: string
+  onChange: (v: string) => void
+  unit?: string | undefined
+  hint?: string | undefined
+  error?: string | undefined
+  optional?: string | undefined
+  min: number
+  max: number
+  step?: number | undefined
+}) {
+  return (
+    <div>
+      <Label htmlFor={id} optional={optional}>
+        {label}
+      </Label>
+      <UnitInput
+        id={id}
+        value={value}
+        onChange={onChange}
+        unit={unit}
+        min={min}
+        max={max}
+        step={step}
+        invalid={!!error}
+        describedBy={[error ? `${id}-error` : null, hint ? `${id}-hint` : null].filter(Boolean).join(' ') || undefined}
+      />
+      {hint && (
+        <p id={`${id}-hint`} className="mt-1.5 text-xs text-muted-foreground">
+          {hint}
+        </p>
+      )}
+      <FieldError id={`${id}-error`} message={error} />
     </div>
   )
 }
@@ -418,27 +560,52 @@ export function QuoteForm() {
 
   if (done) {
     const serviceName = services.filter((s) => parseServices(data.service).includes(s.id)).map((s) => s.name).join(', ')
+    const clean = activeCleanScope(data)
+    const general = needsGeneral(data.service)
+    const has = (c: CleanScope) => clean.includes(c)
+    const pick = <K extends string>(labels: Record<K, string>, key: string) => labels[key as K] ?? ''
     const summary = [
       ...(reference ? [[f.reference, reference]] : []),
       [f.service, serviceName],
-      ...(needsCleanScope(data.service)
-        ? [[f.cleanScope, parseCleanScope(data.cleanScope).map((c) => f.cleanScopes[c].title).join(', ')]]
-        : []),
+      ...(clean.length ? [[f.cleanScope, clean.map((c) => f.cleanScopes[c].title).join(', ')]] : []),
       ...(needsBuildScope(data.service)
         ? [[f.buildScope, parseBuildScope(data.buildScope).map((c) => f.buildScopes[c].title).join(', ')]]
         : []),
-      [f.objectType, f.objectTypes[data.objectType as keyof typeof f.objectTypes]],
-      [f.serviceType, f.serviceTypes[data.serviceType as keyof typeof f.serviceTypes]?.title],
-      [f.units, data.units],
+      [f.objectType, pick(f.objectTypes, data.objectType)],
+      ...(general ? [[f.serviceType, f.serviceTypes[data.serviceType as keyof typeof f.serviceTypes]?.title]] : []),
+      ...(needsUnits(data) ? [[f.units, data.units]] : []),
       [f.address, data.address],
       ...(data.billingAddress.trim() ? [[f.billingAddress, data.billingAddress]] : []),
       ...(data.company.trim() ? [[f.company, data.company]] : []),
-      [f.area, `${data.area} ${f.areaUnit}`],
-      [f.floor, data.floor],
-      [f.elevator, data.elevator === 'yes' ? f.yes : f.no],
+      ...(general
+        ? [
+            [f.area, `${data.area} ${f.areaUnit}`],
+            [f.floor, data.floor],
+            [f.elevator, data.elevator === 'yes' ? f.yes : f.no],
+          ]
+        : []),
       ...(needsDistance(data.service) ? [[f.distance, `${data.distance} ${f.distanceUnit}`]] : []),
       ...(needsFillLevel(data.service)
         ? [[f.fillLevel, f.fillLevels[data.fillLevel as FillLevel]?.title]]
+        : []),
+      ...(has('treppenhaus')
+        ? [
+            [f.stairwells, data.stairwells],
+            [f.storeys, data.storeys],
+            [f.stairFrequency, pick(f.stairFrequencies, data.stairFrequency)],
+          ]
+        : []),
+      ...(has('muell') ? [[f.bins, data.bins]] : []),
+      ...(has('winter') ? [[f.sidewalk, `${data.sidewalk} ${f.meterUnit}`]] : []),
+      ...(has('garten') ? [[f.gardenArea, `${data.gardenArea} ${f.areaUnit}`]] : []),
+      ...(has('innen') || has('endreinigung') ? [[f.interiorArea, `${data.interiorArea} ${f.areaUnit}`]] : []),
+      ...(has('innen') ? [[f.interiorFrequency, pick(f.interiorFrequencies, data.interiorFrequency)]] : []),
+      ...(has('fenster')
+        ? [
+            [f.windows, data.windows],
+            ...(data.glassArea.trim() ? [[f.glassArea, `${data.glassArea} ${f.areaUnit}`]] : []),
+            [f.windowFrequency, pick(f.windowFrequencies, data.windowFrequency)],
+          ]
         : []),
     ]
     return (
@@ -474,6 +641,7 @@ export function QuoteForm() {
   const serviceLabels = Object.fromEntries(
     services.map((s) => [s.id, { title: s.name, subtitle: t.services.items[s.id].tagline }]),
   ) as Record<ServiceId, { title: string; subtitle: string }>
+  const cleanNow = activeCleanScope(data)
   const progress = ((step + 1) / totalSteps) * 100
   const stepTitle = [f.step1Title, f.step2Title, f.step3Title][step]
 
@@ -542,14 +710,70 @@ export function QuoteForm() {
               error={err('service')}
             />
 
-            {needsCleanScope(data.service) && (
+            <fieldset aria-describedby={[described('objectScope'), 'objectScope-hint'].filter(Boolean).join(' ')}>
+              <legend className="mb-1 text-sm font-medium text-foreground">
+                {f.objectScope} <span className="text-destructive">*</span>
+              </legend>
+              <p id="objectScope-hint" className="mb-3 text-xs text-muted-foreground">
+                {f.objectScopeHint}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {objectScopes.map((o) => (
+                  <ChoiceCard
+                    key={o}
+                    name="objectScope"
+                    value={o}
+                    checked={data.objectScope === o}
+                    onChange={(v) => {
+                      update('objectScope', v)
+                      if (!isObjectTypeOf(v, data.objectType)) update('objectType', '')
+                    }}
+                    icon={objectScopeIcons[o]}
+                    title={f.objectScopes[o].title}
+                    subtitle={f.objectScopes[o].subtitle}
+                    invalid={!!errors.objectScope}
+                  />
+                ))}
+              </div>
+              <FieldError id="objectScope-error" message={err('objectScope')} />
+            </fieldset>
+
+            {data.objectScope && (
+              <fieldset className="animate-in fade-in duration-300" aria-describedby={described('objectType')}>
+                <legend className="mb-3 text-sm font-medium text-foreground">
+                  {f.objectType} <span className="text-destructive">*</span>
+                </legend>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {objectTypesByScope[data.objectScope as ObjectScope].map((o) => (
+                    <ChoiceCard
+                      key={o}
+                      name="objectType"
+                      value={o}
+                      checked={data.objectType === o}
+                      onChange={(v) => update('objectType', v)}
+                      icon={objectIcons[o]}
+                      title={f.objectTypes[o]}
+                      invalid={!!errors.objectType}
+                    />
+                  ))}
+                </div>
+                <FieldError id="objectType-error" message={err('objectType')} />
+              </fieldset>
+            )}
+
+            {needsCleanScope(data.service) && isObjectTypeOf(data.objectScope, data.objectType) && (
               <ScopeGroup
                 name="cleanScope"
                 legend={f.cleanScope}
                 hint={f.cleanScopeHint}
-                options={cleanScopes}
-                selected={parseCleanScope(data.cleanScope)}
-                onChange={(v) => update('cleanScope', v)}
+                options={cleanScopesFor(data.objectType)}
+                selected={activeCleanScope(data)}
+                onChange={(v) => {
+                  // Keep choices hidden for this property type, in case the customer switches back.
+                  const offered = cleanScopesFor(data.objectType)
+                  const hidden = parseCleanScope(data.cleanScope).filter((c) => !offered.includes(c))
+                  update('cleanScope', [...hidden, ...v.split(',').filter(Boolean)].join(','))
+                }}
                 icons={cleanScopeIcons}
                 labels={f.cleanScopes}
                 error={err('cleanScope')}
@@ -569,157 +793,111 @@ export function QuoteForm() {
                 error={err('buildScope')}
               />
             )}
-
-            <fieldset aria-describedby={described('objectType')}>
-              <legend className="mb-3 text-sm font-medium text-foreground">
-                {f.objectType} <span className="text-destructive">*</span>
-              </legend>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {objectTypes.map((o) => (
-                  <ChoiceCard
-                    key={o}
-                    name="objectType"
-                    value={o}
-                    checked={data.objectType === o}
-                    onChange={(v) => update('objectType', v)}
-                    icon={objectIcons[o]}
-                    title={f.objectTypes[o]}
-                    invalid={!!errors.objectType}
-                  />
-                ))}
-              </div>
-              <FieldError id="objectType-error" message={err('objectType')} />
-            </fieldset>
           </div>
         )}
 
         {step === 1 && (
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <fieldset className="sm:col-span-2" aria-describedby={described('serviceType')}>
-              <legend className="mb-3 text-sm font-medium text-foreground">
-                {f.serviceType} <span className="text-destructive">*</span>
-              </legend>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {serviceTypes.map((type) => (
-                  <ChoiceCard
-                    key={type}
-                    name="serviceType"
-                    value={type}
-                    checked={data.serviceType === type}
-                    onChange={(v) => update('serviceType', v)}
-                    icon={type === 'recurring' ? Repeat : CalendarCheck}
-                    title={f.serviceTypes[type].title}
-                    subtitle={f.serviceTypes[type].subtitle}
-                    invalid={!!errors.serviceType}
-                  />
-                ))}
-              </div>
-              <FieldError id="serviceType-error" message={err('serviceType')} />
-            </fieldset>
+            <p className="rounded-md border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-primary sm:col-span-2">
+              {f.estimateNote}
+            </p>
 
-            <div className="sm:col-span-2">
-              <Label htmlFor="units">{f.units}</Label>
-              <div className="sm:max-w-xs">
-                <UnitInput
+            {needsGeneral(data.service) && (
+              <fieldset
+                className="sm:col-span-2"
+                aria-describedby={described('serviceType', needsCleanScope(data.service) ? 'serviceType-hint' : undefined)}
+              >
+                <legend className="mb-3 text-sm font-medium text-foreground">
+                  {f.serviceType} <span className="text-destructive">*</span>
+                </legend>
+                {needsCleanScope(data.service) && (
+                  <p id="serviceType-hint" className="-mt-1.5 mb-3 text-xs text-muted-foreground">
+                    {f.serviceTypeHintMixed}
+                  </p>
+                )}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {serviceTypes.map((type) => (
+                    <ChoiceCard
+                      key={type}
+                      name="serviceType"
+                      value={type}
+                      checked={data.serviceType === type}
+                      onChange={(v) => update('serviceType', v)}
+                      icon={type === 'recurring' ? Repeat : CalendarCheck}
+                      title={f.serviceTypes[type].title}
+                      subtitle={f.serviceTypes[type].subtitle}
+                      invalid={!!errors.serviceType}
+                    />
+                  ))}
+                </div>
+                <FieldError id="serviceType-error" message={err('serviceType')} />
+              </fieldset>
+            )}
+
+            {needsUnits(data) && (
+              <div className="sm:col-span-2 sm:max-w-xs">
+                <NumberField
                   id="units"
+                  label={f.units}
                   value={data.units}
                   onChange={(v) => update('units', v)}
                   min={1}
                   max={9999}
                   step={1}
-                  invalid={!!errors.units}
-                  describedBy={described('units', 'units-hint')}
+                  hint={f.unitsHint}
+                  error={err('units')}
                 />
               </div>
-              <p id="units-hint" className="mt-1.5 text-xs text-muted-foreground">
-                {f.unitsHint}
-              </p>
-              <FieldError id="units-error" message={err('units')} />
-            </div>
+            )}
 
-            <div>
-              <Label htmlFor="area">{f.area}</Label>
-              <UnitInput
-                id="area"
-                value={data.area}
-                onChange={(v) => update('area', v)}
-                unit={f.areaUnit}
-                min={1}
-                max={100000}
-                invalid={!!errors.area}
-                describedBy={described('area')}
-              />
-              <FieldError id="area-error" message={err('area')} />
-            </div>
-
-            <div>
-              <Label htmlFor="floor">{f.floor}</Label>
-              <UnitInput
-                id="floor"
-                value={data.floor}
-                onChange={(v) => update('floor', v)}
-                min={-2}
-                max={99}
-                step={1}
-                invalid={!!errors.floor}
-                describedBy={described('floor', 'floor-hint')}
-              />
-              <p id="floor-hint" className="mt-1.5 text-xs text-muted-foreground">
-                {f.floorHint}
-              </p>
-              <FieldError id="floor-error" message={err('floor')} />
-            </div>
-
-            <fieldset className="sm:col-span-2" aria-describedby={described('elevator')}>
-              <legend className="mb-3 text-sm font-medium text-foreground">
-                {f.elevator} <span className="text-destructive">*</span>
-              </legend>
-              <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
-                {(['yes', 'no'] as const).map((opt) => (
-                  <label
-                    key={opt}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-center gap-2 rounded-md border px-4 py-3 font-semibold transition-colors has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-accent/30',
-                      data.elevator === opt
-                        ? 'border-accent bg-accent text-accent-foreground'
-                        : 'border-border bg-background text-primary hover:border-accent/50',
-                      errors.elevator && 'border-destructive/60',
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="elevator"
-                      value={opt}
-                      checked={data.elevator === opt}
-                      onChange={() => update('elevator', opt)}
-                      className="sr-only"
-                    />
-                    {opt === 'yes' ? f.yes : f.no}
-                  </label>
-                ))}
-              </div>
-              <FieldError id="elevator-error" message={err('elevator')} />
-            </fieldset>
+            {needsGeneral(data.service) && (
+              <>
+                <NumberField
+                  id="area"
+                  label={f.area}
+                  value={data.area}
+                  onChange={(v) => update('area', v)}
+                  unit={f.areaUnit}
+                  min={1}
+                  max={100000}
+                  error={err('area')}
+                />
+                <NumberField
+                  id="floor"
+                  label={f.floor}
+                  value={data.floor}
+                  onChange={(v) => update('floor', v)}
+                  min={-2}
+                  max={99}
+                  step={1}
+                  hint={f.floorHint}
+                  error={err('floor')}
+                />
+                <PillGroup
+                  name="elevator"
+                  legend={f.elevator}
+                  options={['yes', 'no'] as const}
+                  labels={{ yes: f.yes, no: f.no }}
+                  value={data.elevator}
+                  onChange={(v) => update('elevator', v)}
+                  error={err('elevator')}
+                />
+              </>
+            )}
 
             {needsDistance(data.service) && (
-              <div className="sm:col-span-2 animate-in fade-in duration-300">
-                <Label htmlFor="distance">{f.distance}</Label>
-                <div className="sm:max-w-xs">
-                  <UnitInput
-                    id="distance"
-                    value={data.distance}
-                    onChange={(v) => update('distance', v)}
-                    unit={f.distanceUnit}
-                    min={0}
-                    max={1000}
-                    invalid={!!errors.distance}
-                    describedBy={described('distance', 'distance-hint')}
-                  />
-                </div>
-                <p id="distance-hint" className="mt-1.5 text-xs text-muted-foreground">
-                  {f.distanceHint}
-                </p>
-                <FieldError id="distance-error" message={err('distance')} />
+              <div className="sm:col-span-2 sm:max-w-xs animate-in fade-in duration-300">
+                <NumberField
+                  id="distance"
+                  label={f.distance}
+                  value={data.distance}
+                  onChange={(v) => update('distance', v)}
+                  unit={f.distanceUnit}
+                  min={0}
+                  max={1000}
+                  hint={f.distanceHint}
+                  error={err('distance')}
+                />
               </div>
             )}
 
@@ -745,6 +923,147 @@ export function QuoteForm() {
                 </div>
                 <FieldError id="fillLevel-error" message={err('fillLevel')} />
               </fieldset>
+            )}
+
+            {cleanNow.length > 0 && (
+              <div className="grid gap-5 border-t pt-5 sm:col-span-2 sm:grid-cols-2 animate-in fade-in duration-300">
+                <h4 className="text-base font-semibold text-primary sm:col-span-2">{f.cleanDetails}</h4>
+                {cleanNow.includes('treppenhaus') && (
+                  <>
+                    <NumberField
+                      id="stairwells"
+                      label={f.stairwells}
+                      value={data.stairwells}
+                      onChange={(v) => update('stairwells', v)}
+                      min={1}
+                      max={99}
+                      step={1}
+                      error={err('stairwells')}
+                    />
+                    <NumberField
+                      id="storeys"
+                      label={f.storeys}
+                      value={data.storeys}
+                      onChange={(v) => update('storeys', v)}
+                      min={1}
+                      max={99}
+                      step={1}
+                      hint={f.storeysHint}
+                      error={err('storeys')}
+                    />
+                    <PillGroup
+                      name="stairFrequency"
+                      legend={f.stairFrequency}
+                      options={stairFrequencies}
+                      labels={f.stairFrequencies}
+                      value={data.stairFrequency}
+                      onChange={(v) => update('stairFrequency', v)}
+                      error={err('stairFrequency')}
+                    />
+                  </>
+                )}
+                {cleanNow.includes('muell') && (
+                  <NumberField
+                    id="bins"
+                    label={f.bins}
+                    value={data.bins}
+                    onChange={(v) => update('bins', v)}
+                    min={1}
+                    max={999}
+                    step={1}
+                    error={err('bins')}
+                  />
+                )}
+                {cleanNow.includes('winter') && (
+                  <NumberField
+                    id="sidewalk"
+                    label={f.sidewalk}
+                    value={data.sidewalk}
+                    onChange={(v) => update('sidewalk', v)}
+                    unit={f.meterUnit}
+                    min={1}
+                    max={10000}
+                    hint={f.sidewalkHint}
+                    error={err('sidewalk')}
+                  />
+                )}
+                {cleanNow.includes('garten') && (
+                  <NumberField
+                    id="gardenArea"
+                    label={f.gardenArea}
+                    value={data.gardenArea}
+                    onChange={(v) => update('gardenArea', v)}
+                    unit={f.areaUnit}
+                    min={1}
+                    max={1000000}
+                    hint={f.gardenAreaHint}
+                    error={err('gardenArea')}
+                  />
+                )}
+                {(cleanNow.includes('innen') || cleanNow.includes('endreinigung')) && (
+                  <NumberField
+                    id="interiorArea"
+                    label={f.interiorArea}
+                    value={data.interiorArea}
+                    onChange={(v) => update('interiorArea', v)}
+                    unit={f.areaUnit}
+                    min={1}
+                    max={100000}
+                    hint={f.interiorAreaHint}
+                    error={err('interiorArea')}
+                  />
+                )}
+                {cleanNow.includes('innen') && (
+                  <PillGroup
+                    name="interiorFrequency"
+                    legend={f.interiorFrequency}
+                    options={interiorFrequencies}
+                    labels={f.interiorFrequencies}
+                    value={data.interiorFrequency}
+                    onChange={(v) => update('interiorFrequency', v)}
+                    error={err('interiorFrequency')}
+                  />
+                )}
+                {cleanNow.includes('fenster') && (
+                  <>
+                    <NumberField
+                      id="windows"
+                      label={f.windows}
+                      value={data.windows}
+                      onChange={(v) => update('windows', v)}
+                      min={0}
+                      max={9999}
+                      step={1}
+                      hint={f.windowsHint}
+                      error={err('windows')}
+                    />
+                    <NumberField
+                      id="glassArea"
+                      label={f.glassArea}
+                      value={data.glassArea}
+                      onChange={(v) => update('glassArea', v)}
+                      unit={f.areaUnit}
+                      min={0}
+                      max={100000}
+                      hint={f.approxHint}
+                      optional={f.optional}
+                      error={err('glassArea')}
+                    />
+                    <PillGroup
+                      name="windowFrequency"
+                      legend={f.windowFrequency}
+                      options={windowFrequencies}
+                      labels={f.windowFrequencies}
+                      value={data.windowFrequency}
+                      onChange={(v) => update('windowFrequency', v)}
+                      error={err('windowFrequency')}
+                    />
+                  </>
+                )}
+                {cleanNow.includes('sonder') && (
+                  <p className="text-sm text-muted-foreground sm:col-span-2">{f.sonderNote}</p>
+                )}
+              </div>
             )}
           </div>
         )}

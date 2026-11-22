@@ -1,5 +1,5 @@
 import { site } from '@/lib/site'
-import type { QuoteData } from '@/lib/quote'
+import { toPayload, type QuoteData } from '@/lib/quote'
 
 /**
  * Make webhooks accept about 5 MB per request. Attachments are sent base64-encoded
@@ -59,7 +59,7 @@ export async function encodeFiles(files: File[]): Promise<EncodedFile[]> {
 export async function submitQuote(data: QuoteData, files: File[], honeypot: string): Promise<SubmitResult> {
   const encoded = await encodeFiles(files)
   if (encoded.reduce((sum, f) => sum + f.size, 0) > MAX_TOTAL_UPLOAD) return { ok: false, reason: 'tooLarge' }
-  const { privacy: _consent, ...fields } = data
+  const { privacy: _consent, ...fields } = toPayload(data)
   const payload = { ...fields, website: honeypot, files: encoded.map(({ name, type, data }) => ({ name, type, data })) }
   try {
     const response = await fetch(site.quoteWebhook, {
