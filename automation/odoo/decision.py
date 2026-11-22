@@ -179,7 +179,24 @@ else:
             if not any(x in picked for x in ('Renovierung', 'Trockenbau', 'Sanierung', 'Glasfaser & Infrastruktur')):
                 lines.append((P('Renovierungsarbeiten (Std.)'), 1, None, 'Umfang nach Besichtigung'))
         if 'MOKA Verwaltung' in services:
-            lines.append((P('Mietverwaltung (je Einheit / Monat)'), units or 1, None, ''))
+            cv = cfg.get('verwaltung', {})
+            mi = json.loads(lead.x_moka_mgmt_input or '{}')
+            mn = lambda k: int(float(str(mi.get(k) or '0').replace(',', '.') or 0))
+            MGMT = [('miet', 'Mietverwaltung, Monatspauschale'), ('weg', 'WEG-Verwaltung, Monatspauschale'),
+                    ('sev', 'Sondereigentumsverwaltung, Monatspauschale'), ('technik', 'Technische Objektbetreuung, Monatspauschale')]
+            types = [x for x in (mi.get('mgmtTypes') or '').split(',') if x]
+            for key, name in MGMT:
+                if key in types and key in cv:
+                    pr = cv[key]
+                    raw = pr['flat'] * mn('mgmtFlats') + pr['commercial'] * mn('mgmtCommercial') + pr['parking'] * mn('mgmtParking')
+                    cnt = lambda n, one, many: '%d %s' % (n, one if n == 1 else many) if n else ''
+                    what = ', '.join(t for t in [cnt(mn('mgmtFlats'), 'Wohnung', 'Wohnungen'),
+                                                 cnt(mn('mgmtCommercial'), 'Gewerbeeinheit', 'Gewerbeeinheiten'),
+                                                 cnt(mn('mgmtParking'), 'Stellplatz', 'Stellplätze') if pr['parking'] else ''] if t)
+                    lines.append((P(name), 1, max(pr['min'], raw), what + ('; Mindestpauschale' if pr['min'] > raw else '')
+                                  + ('; Beginn %s' % mi['mgmtStart'] if mi.get('mgmtStart') else '')))
+            if not types:
+                lines.append((P('Mietverwaltung, Monatspauschale'), 1, None, '%d Einheiten' % (units or 1)))
         monthly = env['sale.subscription.plan'].search([('billing_period_unit', '=', 'month'), ('billing_period_value', '=', 1)], limit=1)
         to_line = lambda prod, qty, price, extra: Command.create(dict(
             {'product_id': prod.id, 'product_uom_qty': qty,

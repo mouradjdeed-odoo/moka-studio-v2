@@ -52,6 +52,9 @@ export const buildDeadlines = ['asap', 'two_weeks', 'month', 'flexible'] as cons
 export const renoWorks = ['paint', 'wallpaper', 'floor', 'doors'] as const
 export type RenoWork = (typeof renoWorks)[number]
 export const wallConditions = ['good', 'normal', 'poor'] as const
+/** MOKA Verwaltung: kinds of management, priced per unit and month. */
+export const mgmtTypes = ['miet', 'weg', 'sev', 'technik'] as const
+export type MgmtType = (typeof mgmtTypes)[number]
 /** Yes / no / don't know (fibre questions). */
 export const triOptions = ['yes', 'no', 'unknown'] as const
 export const serviceTypes = ['recurring', 'onetime'] as const
@@ -138,6 +141,15 @@ export type QuoteData = {
   fiberEntrances: string
   fiberConnection: string
   fiberDucts: string
+  /** MOKA Verwaltung: comma-separated MgmtType values. */
+  mgmtTypes: string
+  mgmtFlats: string
+  mgmtCommercial: string
+  mgmtParking: string
+  /** Desired start date (YYYY-MM-DD). */
+  mgmtStart: string
+  /** "yes" when another manager is replaced (information for the managers only). */
+  mgmtSwitch: string
   /** MOKA Clean details, each only asked when the matching service is chosen. */
   stairwells: string
   storeys: string
@@ -208,6 +220,12 @@ export type QuoteErrorCode =
   | 'fiberEntrances'
   | 'fiberConnection'
   | 'fiberDucts'
+  | 'mgmtTypes'
+  | 'mgmtFlats'
+  | 'mgmtCommercial'
+  | 'mgmtParking'
+  | 'mgmtStart'
+  | 'mgmtSwitch'
   | 'stairwells'
   | 'storeys'
   | 'stairFrequency'
@@ -285,6 +303,12 @@ export const fieldStep: Record<QuoteField, number> = {
   fiberEntrances: 1,
   fiberConnection: 1,
   fiberDucts: 1,
+  mgmtTypes: 1,
+  mgmtFlats: 1,
+  mgmtCommercial: 1,
+  mgmtParking: 1,
+  mgmtStart: 1,
+  mgmtSwitch: 1,
   stairwells: 1,
   storeys: 1,
   stairFrequency: 1,
@@ -317,10 +341,10 @@ const hasService = (value: string, id: string) => parseServices(value).includes(
 export const needsClear = (service: string) => hasService(service, 'clear')
 export const needsCleanScope = (service: string) => hasService(service, 'clean')
 export const needsBuildScope = (service: string) => hasService(service, 'build')
-/** Job type, area and units are asked for MOKA Verwaltung (the other units ask per service or place). */
-export const needsGeneral = (service: string) => hasService(service, 'verwaltung')
+export const needsVerwaltung = (service: string) => hasService(service, 'verwaltung')
+export const parseMgmtTypes = (value: string) => value.split(',').filter((v): v is MgmtType => (mgmtTypes as readonly string[]).includes(v))
 /** Floor and elevator of the property: for Clear, Build and Verwaltung. */
-export const needsFloor = (service: string) => needsGeneral(service) || needsClear(service) || needsBuildScope(service)
+export const needsFloor = (service: string) => needsClear(service) || needsBuildScope(service)
 /** Build scopes chosen (only when MOKA Build is selected). */
 export const activeBuildScope = (d: Pick<QuoteData, 'service' | 'buildScope'>): BuildScope[] =>
   needsBuildScope(d.service) ? parseBuildScope(d.buildScope) : []
@@ -352,15 +376,15 @@ export const activeCleanScope = (d: Pick<QuoteData, 'service' | 'objectType' | '
   return parseCleanScope(d.cleanScope).filter((c) => allowed.includes(c))
 }
 
-/** Number of units: for Verwaltung, and for the caretaker of a whole building. */
+/** Number of units: for the caretaker of a whole building. */
 export const needsUnits = (d: Pick<QuoteData, 'service' | 'objectType' | 'cleanScope'>) =>
-  needsGeneral(d.service) || (activeCleanScope(d).includes('hausmeister') && d.objectType !== 'efh')
+  activeCleanScope(d).includes('hausmeister') && d.objectType !== 'efh'
 
 const RECURRING_CLEAN: readonly CleanScope[] = ['muell', 'treppenhaus', 'hausmeister', 'winter', 'garten', 'innen']
 
-/** Job type sent to Odoo: chosen by the customer, or derived from the Clean services (Clear is one-time). */
+/** Job type sent to Odoo: recurring for Verwaltung or recurring Clean services, else one-time. */
 export function effectiveServiceType(d: QuoteData) {
-  if (needsGeneral(d.service)) return d.serviceType
+  if (needsVerwaltung(d.service)) return 'recurring'
   const scope = activeCleanScope(d)
   const recurring =
     scope.some((c) => RECURRING_CLEAN.includes(c)) || (scope.includes('fenster') && d.windowFrequency !== 'once')
@@ -375,6 +399,7 @@ export function toPayload(d: QuoteData): QuoteData {
     clearAreas: needsClear(d.service) ? parseClearAreas(d.clearAreas).join(',') : '',
     clearExtras: needsClear(d.service) ? activeClearExtras(d).join(',') : '',
     renoWorks: activeBuildScope(d).includes('renovierung') ? parseRenoWorks(d.renoWorks).join(',') : '',
+    mgmtTypes: needsVerwaltung(d.service) ? parseMgmtTypes(d.mgmtTypes).join(',') : '',
     serviceType: effectiveServiceType(d),
     units: needsUnits(d) ? d.units : '1',
   }
@@ -399,9 +424,14 @@ export function validateStep(step: number, d: QuoteData, files: FileMeta[]): Quo
     if (needsBuildScope(d.service) && parseBuildScope(d.buildScope).length === 0) e.buildScope = 'buildScope'
   }
   if (step === 1) {
-    if (needsGeneral(d.service)) {
-      if (!isOneOf(serviceTypes, d.serviceType)) e.serviceType = 'serviceType'
-      if (!inRange(d.area, 1, 100000)) e.area = 'area'
+    if (needsVerwaltung(d.service)) {
+      if (parseMgmtTypes(d.mgmtTypes).length === 0) e.mgmtTypes = 'mgmtTypes'
+      if (!inRange(d.mgmtFlats, 0, 9999, true)) e.mgmtFlats = 'mgmtFlats'
+      if (!inRange(d.mgmtCommercial, 0, 9999, true)) e.mgmtCommercial = 'mgmtCommercial'
+      else if (!e.mgmtFlats && Number(d.mgmtFlats) + Number(d.mgmtCommercial) === 0) e.mgmtFlats = 'mgmtFlats'
+      if (d.mgmtParking.trim() && !inRange(d.mgmtParking, 0, 9999, true)) e.mgmtParking = 'mgmtParking'
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d.mgmtStart)) e.mgmtStart = 'mgmtStart'
+      if (d.mgmtSwitch !== 'yes' && d.mgmtSwitch !== 'no') e.mgmtSwitch = 'mgmtSwitch'
     }
     if (needsFloor(d.service)) {
       if (!inRange(d.floor, -2, 99, true)) e.floor = 'floor'

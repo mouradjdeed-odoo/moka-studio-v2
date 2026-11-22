@@ -214,8 +214,26 @@ else:
             r = cb.get('range', [0.85, 1.3])
             lo += b_total * r[0]; hi += b_total * r[1]
             lines.append('Build gesamt: %.2f € (Spanne %.0f–%.0f €)' % (b_total, b_total * r[0], b_total * r[1]))
+    MGMT_KEYS = ('mgmtTypes', 'mgmtFlats', 'mgmtCommercial', 'mgmtParking', 'mgmtStart', 'mgmtSwitch')
+    mi = dict((k, s(k)) for k in MGMT_KEYS if s(k)) if 'verwaltung' in units_ids else {}
+    MGMT = {'miet': 'Mietverwaltung', 'weg': 'WEG-Verwaltung', 'sev': 'Sondereigentumsverwaltung', 'technik': 'Technische Objektbetreuung'}
     if 'verwaltung' in units_ids:
-        lines.append('Verwaltung: keine Schätzung, manuelles Angebot')
+        cv = cfg.get('verwaltung', {})
+        mn = lambda k: int(float(str(mi.get(k) or '0').replace(',', '.') or 0))
+        m_total = 0.0
+        for mt in [x for x in (mi.get('mgmtTypes') or '').split(',') if x in MGMT and x in cv]:
+            pr = cv[mt]
+            raw = pr['flat'] * mn('mgmtFlats') + pr['commercial'] * mn('mgmtCommercial') + pr['parking'] * mn('mgmtParking')
+            v = max(pr['min'], raw)
+            m_total += v
+            lines.append('%s: %d × %s + %d × %s + %d × %s = %.2f €/Monat%s' % (
+                MGMT[mt], mn('mgmtFlats'), pr['flat'], mn('mgmtCommercial'), pr['commercial'], mn('mgmtParking'), pr['parking'], raw,
+                ' → Mindestpreis %s €/Monat' % pr['min'] if v > raw else ''))
+        lines.append('Verwaltung: Beginn %s; bisherige Verwaltung: %s' % (mi.get('mgmtStart') or '?', 'ja (Verwalterwechsel)' if mi.get('mgmtSwitch') == 'yes' else 'nein'))
+        if m_total:
+            r = cv.get('range', [0.9, 1.15])
+            lo += m_total * r[0]; hi += m_total * r[1]
+            lines.append('Verwaltung gesamt: %.2f €/Monat (Spanne %.0f–%.0f €/Monat)' % (m_total, m_total * r[0], m_total * r[1]))
     lo, hi = round(lo / 10) * 10, round(hi / 10) * 10
 
     # ---- contact ----
@@ -256,7 +274,7 @@ else:
         'x_moka_scope': scope_label,
         'x_moka_object_type': obj if obj in OBJECT else False,
         'x_moka_service_type': s('serviceType') if s('serviceType') in ('recurring', 'onetime') else False,
-        'x_moka_units': units,
+        'x_moka_units': (int(float(s('mgmtFlats') or 0)) + int(float(s('mgmtCommercial') or 0))) if 'verwaltung' in units_ids else units,
         'x_moka_area': area or num('renoArea') or sum(num(k + 'Area') for k in ('living', 'keller', 'attic', 'garage', 'office')),
         'x_moka_floor': floor,
         'x_moka_elevator': s('elevator') == 'yes',
@@ -269,6 +287,7 @@ else:
         'x_moka_clean_input': json.dumps(clean_in) if clean_in else False,
         'x_moka_clear_input': json.dumps(ci) if ci else False,
         'x_moka_build_input': json.dumps(bi) if bi else False,
+        'x_moka_mgmt_input': json.dumps(mi) if mi else False,
         'x_moka_token': env.context.get('moka_token') or False,
     })
     lead.write({'x_moka_ref': 'A-%05d' % lead.id})
@@ -290,13 +309,15 @@ else:
         link = lambda a: '%s?lead=%d&t=%s&a=%s' % (url, lead.id, lead.x_moka_token, a)
         btn = lambda a, label, color: '<a href="%s" style="display:inline-block;margin:4px 6px 4px 0;padding:10px 16px;border-radius:6px;background:%s;color:#fff;text-decoration:none;font-weight:bold">%s</a>' % (link(a), color, label)
         esc = lambda t: str(t or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        general = 'verwaltung' in units_ids
         rows = [
             ('Anfrage-Nr.', lead.x_moka_ref), ('Leistung', units_label), ('Bereiche', scope_label),
             ('Auftragsart', dict(recurring='Regelmäßig', onetime='Einmalig').get(s('serviceType'), '')),
             ('Objekt', OBJECT.get(obj, obj)), ('Objektadresse', s('address')), ('Rechnungsadresse', s('billingAddress') or 'wie Objektadresse'),
-            ('Einheiten', s('units') if general or 'hausmeister' in clean_scope else ''),
-            ('Fläche', general and s('area') and '%s m²' % s('area')), ('Etage', s('floor')),
+            ('Einheiten', s('units') if 'hausmeister' in clean_scope else ''),
+            ('Verwaltung', mi and '%s; %s Wohnungen, %s Gewerbe, %s Stellplätze; Beginn %s; Verwalterwechsel: %s' % (
+                ', '.join(MGMT.get(x, x) for x in s('mgmtTypes').split(',') if x), s('mgmtFlats') or '0', s('mgmtCommercial') or '0',
+                s('mgmtParking') or '0', s('mgmtStart'), 'ja' if s('mgmtSwitch') == 'yes' else 'nein')),
+            ('Etage', s('floor')),
             ('Fahrstuhl', s('elevator') and ('Ja' if s('elevator') == 'yes' else 'Nein')),
             ('Zeitraum Build', DEADLINE.get(s('buildDeadline'), '')),
             ('Renovierung', s('renoWorks') and '%s; Wohnfläche ca. %s m², %s Zimmer%s%s%s' % (
