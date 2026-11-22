@@ -165,8 +165,55 @@ else:
         lo += max(cc['min'], cl_total * r[0]) if cl_mode == 'dispose' else cl_total * r[0]
         hi += cl_total * r[1]
         lines.append('Clear gesamt: %.2f € (Spanne %.0f–%.0f €)' % (cl_total, cl_total * r[0], cl_total * r[1]))
+    BUILD_KEYS = ('buildDeadline', 'renoWorks', 'renoArea', 'renoRooms', 'wallCondition', 'floorArea', 'doors',
+                  'fiberUnits', 'fiberStoreys', 'fiberEntrances', 'fiberConnection', 'fiberDucts')
+    bi = dict((k, s(k)) for k in BUILD_KEYS if s(k)) if 'build' in units_ids else {}
+    DEADLINE = {'asap': 'so bald wie möglich', 'two_weeks': 'innerhalb von 2 Wochen', 'month': 'innerhalb eines Monats', 'flexible': 'flexibel'}
+    TRI = {'yes': 'ja', 'no': 'nein', 'unknown': 'weiß nicht'}
     if 'build' in units_ids:
-        lines.append('Build: keine Schätzung, Besichtigung und manuelles Angebot')
+        cb = cfg.get('build', {})
+        bn = lambda k: float(str(bi.get(k) or '0').replace(',', '.') or 0)
+        b_total = 0.0
+        works = [x for x in (bi.get('renoWorks') or '').split(',') if x]
+        if 'renovierung' in build_scope and 'renovierung' in cb and works:
+            rv = cb['renovierung']
+            walls = bn('renoArea') * rv['wall_factor']
+            if 'paint' in works:
+                v = walls * rv['paint_m2'] * (1 + rv['poor_pct'] if bi.get('wallCondition') == 'poor' else 1)
+                b_total += v
+                lines.append('Malerarbeiten: %.0f m² Wohnfläche × %s = %.0f m² × %s €%s = %.2f €' % (
+                    bn('renoArea'), rv['wall_factor'], walls, rv['paint_m2'], ' × (1 + %d %% Zustand schlecht)' % (rv['poor_pct'] * 100) if bi.get('wallCondition') == 'poor' else '', v))
+            if 'wallpaper' in works:
+                v = walls * rv['wallpaper_m2']
+                b_total += v; lines.append('Tapezieren: %.0f m² × %s € = %.2f €' % (walls, rv['wallpaper_m2'], v))
+            if 'floor' in works:
+                per = rv['floor_lay_m2'] + rv['floor_material_m2'] + rv['floor_remove_m2']
+                v = bn('floorArea') * per
+                b_total += v; lines.append('Bodenbelag: %.0f m² × (%s + %s Material + %s Entfernen) € = %.2f €' % (
+                    bn('floorArea'), rv['floor_lay_m2'], rv['floor_material_m2'], rv['floor_remove_m2'], v))
+            if 'doors' in works:
+                v = bn('doors') * rv['door']
+                b_total += v; lines.append('Türen & Heizkörper: %d × %s € = %.2f €' % (bn('doors'), rv['door'], v))
+        if 'glasfaser' in build_scope and 'glasfaser' in cb and bi.get('fiberUnits'):
+            gf = cb['glasfaser']
+            no_ducts = bi.get('fiberDucts') == 'no'
+            v = (gf['base'] + gf['per_unit'] * bn('fiberUnits')) * (1 + gf['no_ducts_pct'] if no_ducts else 1)
+            b_total += v
+            lines.append('Glasfaser: (%s + %s × %d Einheiten)%s = %.2f €; %d Etagen, %d Eingänge; Anschluss im Keller: %s; Leerrohre: %s' % (
+                gf['base'], gf['per_unit'], bn('fiberUnits'), ' × (1 + %d %% ohne Leerrohre)' % (gf['no_ducts_pct'] * 100) if no_ducts else '', v,
+                bn('fiberStoreys'), bn('fiberEntrances'), TRI.get(bi.get('fiberConnection'), '?'), TRI.get(bi.get('fiberDucts'), '?')))
+            if 'unknown' in (bi.get('fiberConnection'), bi.get('fiberDucts')):
+                lines.append('Glasfaser: Angaben teils unbekannt, bitte mit Fotos oder Besichtigung prüfen')
+        if 'trockenbau' in build_scope:
+            lines.append('Trockenbau: keine Schätzung, Besichtigung und manuelles Angebot')
+        if 'sanierung' in build_scope:
+            lines.append('Sanierung: zuerst Fotos prüfen (%d Anhänge), dann Angebot oder Besichtigung' % len(p.get('files') or []))
+        if bi.get('buildDeadline'):
+            lines.append('Build Zeitraum: %s' % DEADLINE.get(bi['buildDeadline'], bi['buildDeadline']))
+        if b_total:
+            r = cb.get('range', [0.85, 1.3])
+            lo += b_total * r[0]; hi += b_total * r[1]
+            lines.append('Build gesamt: %.2f € (Spanne %.0f–%.0f €)' % (b_total, b_total * r[0], b_total * r[1]))
     if 'verwaltung' in units_ids:
         lines.append('Verwaltung: keine Schätzung, manuelles Angebot')
     lo, hi = round(lo / 10) * 10, round(hi / 10) * 10
@@ -210,7 +257,7 @@ else:
         'x_moka_object_type': obj if obj in OBJECT else False,
         'x_moka_service_type': s('serviceType') if s('serviceType') in ('recurring', 'onetime') else False,
         'x_moka_units': units,
-        'x_moka_area': area or sum(num(k + 'Area') for k in ('living', 'keller', 'attic', 'garage', 'office')),
+        'x_moka_area': area or num('renoArea') or sum(num(k + 'Area') for k in ('living', 'keller', 'attic', 'garage', 'office')),
         'x_moka_floor': floor,
         'x_moka_elevator': s('elevator') == 'yes',
         'x_moka_distance': dist,
@@ -221,6 +268,7 @@ else:
         'x_moka_estimate_details': '\n'.join(lines),
         'x_moka_clean_input': json.dumps(clean_in) if clean_in else False,
         'x_moka_clear_input': json.dumps(ci) if ci else False,
+        'x_moka_build_input': json.dumps(bi) if bi else False,
         'x_moka_token': env.context.get('moka_token') or False,
     })
     lead.write({'x_moka_ref': 'A-%05d' % lead.id})
@@ -242,14 +290,21 @@ else:
         link = lambda a: '%s?lead=%d&t=%s&a=%s' % (url, lead.id, lead.x_moka_token, a)
         btn = lambda a, label, color: '<a href="%s" style="display:inline-block;margin:4px 6px 4px 0;padding:10px 16px;border-radius:6px;background:%s;color:#fff;text-decoration:none;font-weight:bold">%s</a>' % (link(a), color, label)
         esc = lambda t: str(t or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        general = any(u in units_ids for u in ('build', 'verwaltung'))
+        general = 'verwaltung' in units_ids
         rows = [
             ('Anfrage-Nr.', lead.x_moka_ref), ('Leistung', units_label), ('Bereiche', scope_label),
             ('Auftragsart', dict(recurring='Regelmäßig', onetime='Einmalig').get(s('serviceType'), '')),
             ('Objekt', OBJECT.get(obj, obj)), ('Objektadresse', s('address')), ('Rechnungsadresse', s('billingAddress') or 'wie Objektadresse'),
             ('Einheiten', s('units') if general or 'hausmeister' in clean_scope else ''),
-            ('Fläche', general and s('area') and '%s m²' % s('area')), ('Etage', (general or ci) and s('floor')),
-            ('Fahrstuhl', (general or ci) and s('elevator') and ('Ja' if s('elevator') == 'yes' else 'Nein')),
+            ('Fläche', general and s('area') and '%s m²' % s('area')), ('Etage', s('floor')),
+            ('Fahrstuhl', s('elevator') and ('Ja' if s('elevator') == 'yes' else 'Nein')),
+            ('Zeitraum Build', DEADLINE.get(s('buildDeadline'), '')),
+            ('Renovierung', s('renoWorks') and '%s; Wohnfläche ca. %s m², %s Zimmer%s%s%s' % (
+                ', '.join(dict(paint='Streichen', wallpaper='Tapezieren', floor='Bodenbelag', doors='Türen/Heizkörper').get(x, x) for x in s('renoWorks').split(',')),
+                s('renoArea'), s('renoRooms'), s('wallCondition') and ', Wände: %s' % dict(good='gut', normal='normal', poor='schlecht').get(s('wallCondition'), ''),
+                s('floorArea') and ', Boden ca. %s m²' % s('floorArea'), s('doors') and ', %s Türen/Heizkörper' % s('doors'))),
+            ('Glasfaser', s('fiberUnits') and '%s Einheiten, %s Etagen, %s Eingänge; Anschluss im Keller: %s; Leerrohre: %s' % (
+                s('fiberUnits'), s('fiberStoreys'), s('fiberEntrances'), TRI.get(s('fiberConnection'), ''), TRI.get(s('fiberDucts'), ''))),
             ('Clear', ci and '; '.join([dict(dispose='Entsorgen', move='Umzug', mixed='Teils Umzug, teils Entsorgen').get(s('clearMode'), '')] + cl_parts)),
             ('Anteil Entsorgen', s('disposeShare') and '%d %%' % (float(s('disposeShare')) * 100)),
             ('Neue Adresse', s('newAddress') and '%s, Etage %s, Fahrstuhl %s' % (s('newAddress'), s('newFloor'), 'ja' if s('newElevator') == 'yes' else 'nein')),
