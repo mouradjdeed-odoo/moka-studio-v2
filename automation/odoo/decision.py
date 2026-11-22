@@ -64,7 +64,8 @@ else:
             if 'Fensterreinigung' in picked and 'fenster' in c:
                 fz = c['fenster']
                 per = fz['base'] + fz['per_window'] * n('windows') + fz['per_m2_glass'] * n('glassArea')
-                what = '%d Fenster' % n('windows') + (' und ca. %.0f m² Glasflächen' % n('glassArea') if n('glassArea') else '')
+                what = ' und '.join(x for x in ('%d Fenster' % n('windows') if n('windows') else '',
+                                                 'ca. %.0f m² Glasflächen' % n('glassArea') if n('glassArea') else '') if x)
                 yearly = fz['per_year'].get(ci.get('windowFrequency'), 1)
                 if yearly > 1:
                     lines.append((P('Fensterreinigung, Monatspauschale'), 1, per * yearly / 12,
