@@ -47,9 +47,31 @@ export type WindowFrequency = (typeof windowFrequencies)[number]
 export const buildScopes = ['renovierung', 'trockenbau', 'sanierung', 'glasfaser'] as const
 export type BuildScope = (typeof buildScopes)[number]
 export const serviceTypes = ['recurring', 'onetime'] as const
-/** How full the property is, only asked for MOKA Clear (drives the volume estimate). */
+/** How full a place is, asked per place for MOKA Clear (drives the volume estimate). */
 export const fillLevels = ['low', 'normal', 'full'] as const
 export type FillLevel = (typeof fillLevels)[number]
+
+/** MOKA Clear: what happens to the items. */
+export const clearModes = ['dispose', 'move', 'mixed'] as const
+export type ClearMode = (typeof clearModes)[number]
+/** Places to clear or move, each with its own area and fill level. */
+export const clearPlaces = ['living', 'keller', 'attic', 'garage', 'office'] as const
+export type ClearPlace = (typeof clearPlaces)[number]
+export const placeArea = { living: 'livingArea', keller: 'kellerArea', attic: 'atticArea', garage: 'garageArea', office: 'officeArea' } as const
+export const placeFill = { living: 'livingFill', keller: 'kellerFill', attic: 'atticFill', garage: 'garageFill', office: 'officeFill' } as const
+/** Share of the items to dispose of when part is moved and part disposed. */
+export const disposeShares = ['0.25', '0.5', '0.75'] as const
+export const clearExtras = ['montage', 'packing', 'haltverbotOld', 'haltverbotNew', 'heavy', 'hazardous', 'noParking'] as const
+export type ClearExtra = (typeof clearExtras)[number]
+/** Extras offered per mode: moving extras cost extra, the others only inform the managers. */
+export const clearExtrasFor = (mode: string): readonly ClearExtra[] =>
+  mode === 'move'
+    ? ['montage', 'packing', 'haltverbotOld', 'haltverbotNew', 'heavy']
+    : mode === 'mixed'
+      ? ['montage', 'packing', 'haltverbotOld', 'haltverbotNew', 'heavy', 'hazardous']
+      : mode === 'dispose'
+        ? ['heavy', 'hazardous', 'noParking']
+        : []
 
 export type QuoteData = {
   /** Comma-separated business unit ids, at least one required. */
@@ -62,15 +84,36 @@ export type QuoteData = {
   cleanScope: string
   /** Comma-separated BuildScope values, only used for MOKA Build. */
   buildScope: string
-  /** Asked for MOKA Clear, Build and Verwaltung; for Clean it follows from the chosen services. */
+  /** Asked for MOKA Build and Verwaltung; for Clean and Clear it follows from the chosen services. */
   serviceType: string
   units: string
   area: string
   floor: string
   elevator: string
+  /** MOKA Clear move: approximate km between the old and the new address. */
   distance: string
-  /** One of `fillLevels`, only used for MOKA Clear. */
-  fillLevel: string
+  /** MOKA Clear: one of `clearModes`. */
+  clearMode: string
+  /** Comma-separated ClearPlace values. */
+  clearAreas: string
+  livingArea: string
+  livingFill: string
+  rooms: string
+  kellerArea: string
+  kellerFill: string
+  atticArea: string
+  atticFill: string
+  garageArea: string
+  garageFill: string
+  officeArea: string
+  officeFill: string
+  /** One of `disposeShares`, only for mode "mixed". */
+  disposeShare: string
+  newAddress: string
+  newFloor: string
+  newElevator: string
+  /** Comma-separated ClearExtra values. */
+  clearExtras: string
   /** MOKA Clean details, each only asked when the matching service is chosen. */
   stairwells: string
   storeys: string
@@ -111,7 +154,24 @@ export type QuoteErrorCode =
   | 'floor'
   | 'elevator'
   | 'distance'
-  | 'fillLevel'
+  | 'clearMode'
+  | 'clearAreas'
+  | 'livingArea'
+  | 'livingFill'
+  | 'rooms'
+  | 'kellerArea'
+  | 'kellerFill'
+  | 'atticArea'
+  | 'atticFill'
+  | 'garageArea'
+  | 'garageFill'
+  | 'officeArea'
+  | 'officeFill'
+  | 'disposeShare'
+  | 'newAddress'
+  | 'newFloor'
+  | 'newElevator'
+  | 'clearExtras'
   | 'stairwells'
   | 'storeys'
   | 'stairFrequency'
@@ -159,7 +219,24 @@ export const fieldStep: Record<QuoteField, number> = {
   floor: 1,
   elevator: 1,
   distance: 1,
-  fillLevel: 1,
+  clearMode: 1,
+  clearAreas: 1,
+  livingArea: 1,
+  livingFill: 1,
+  rooms: 1,
+  kellerArea: 1,
+  kellerFill: 1,
+  atticArea: 1,
+  atticFill: 1,
+  garageArea: 1,
+  garageFill: 1,
+  officeArea: 1,
+  officeFill: 1,
+  disposeShare: 1,
+  newAddress: 1,
+  newFloor: 1,
+  newElevator: 1,
+  clearExtras: 1,
   stairwells: 1,
   storeys: 1,
   stairFrequency: 1,
@@ -189,13 +266,16 @@ export const parseServices = (value: string) => {
 }
 const hasService = (value: string, id: string) => parseServices(value).includes(id)
 
-export const needsDistance = (service: string) => hasService(service, 'clear')
-export const needsFillLevel = (service: string) => hasService(service, 'clear')
+export const needsClear = (service: string) => hasService(service, 'clear')
 export const needsCleanScope = (service: string) => hasService(service, 'clean')
 export const needsBuildScope = (service: string) => hasService(service, 'build')
-/** Job type, area, floor and elevator are asked for every unit except MOKA Clean. */
-export const needsGeneral = (service: string) =>
-  hasService(service, 'clear') || hasService(service, 'build') || hasService(service, 'verwaltung')
+/** Job type and area are asked for MOKA Build and Verwaltung (Clean and Clear ask per service or place). */
+export const needsGeneral = (service: string) => hasService(service, 'build') || hasService(service, 'verwaltung')
+/** Floor and elevator of the property: for Clear, Build and Verwaltung. */
+export const needsFloor = (service: string) => needsGeneral(service) || needsClear(service)
+/** Moving to a new address (MOKA Clear "move" or "mixed"). */
+export const needsMove = (d: Pick<QuoteData, 'service' | 'clearMode'>) =>
+  needsClear(d.service) && (d.clearMode === 'move' || d.clearMode === 'mixed')
 
 const parseList =
   <T extends string>(allowed: readonly T[]) =>
@@ -204,6 +284,11 @@ const parseList =
 
 export const parseCleanScope = parseList(cleanScopes)
 export const parseBuildScope = parseList(buildScopes)
+export const parseClearAreas = parseList(clearPlaces)
+export const parseClearExtras = parseList(clearExtras)
+/** Clear extras offered for the chosen mode. */
+export const activeClearExtras = (d: Pick<QuoteData, 'clearMode' | 'clearExtras'>) =>
+  parseClearExtras(d.clearExtras).filter((x) => clearExtrasFor(d.clearMode).includes(x))
 
 export const isObjectTypeOf = (scope: string, type: string) =>
   (objectTypesByScope[scope as ObjectScope] as readonly string[] | undefined)?.includes(type) ?? false
@@ -221,7 +306,7 @@ export const needsUnits = (d: Pick<QuoteData, 'service' | 'objectType' | 'cleanS
 
 const RECURRING_CLEAN: readonly CleanScope[] = ['muell', 'treppenhaus', 'hausmeister', 'winter', 'garten', 'innen']
 
-/** Job type sent to Odoo: chosen by the customer, or derived from the Clean services. */
+/** Job type sent to Odoo: chosen by the customer, or derived from the Clean services (Clear is one-time). */
 export function effectiveServiceType(d: QuoteData) {
   if (needsGeneral(d.service)) return d.serviceType
   const scope = activeCleanScope(d)
@@ -235,6 +320,8 @@ export function toPayload(d: QuoteData): QuoteData {
   return {
     ...d,
     cleanScope: activeCleanScope(d).join(','),
+    clearAreas: needsClear(d.service) ? parseClearAreas(d.clearAreas).join(',') : '',
+    clearExtras: needsClear(d.service) ? activeClearExtras(d).join(',') : '',
     serviceType: effectiveServiceType(d),
     units: needsUnits(d) ? d.units : '1',
   }
@@ -262,12 +349,31 @@ export function validateStep(step: number, d: QuoteData, files: FileMeta[]): Quo
     if (needsGeneral(d.service)) {
       if (!isOneOf(serviceTypes, d.serviceType)) e.serviceType = 'serviceType'
       if (!inRange(d.area, 1, 100000)) e.area = 'area'
+    }
+    if (needsFloor(d.service)) {
       if (!inRange(d.floor, -2, 99, true)) e.floor = 'floor'
       if (d.elevator !== 'yes' && d.elevator !== 'no') e.elevator = 'elevator'
     }
     if (needsUnits(d) && !inRange(d.units, 1, 9999, true)) e.units = 'units'
-    if (needsDistance(d.service) && !inRange(d.distance, 0, 1000)) e.distance = 'distance'
-    if (needsFillLevel(d.service) && !isOneOf(fillLevels, d.fillLevel)) e.fillLevel = 'fillLevel'
+
+    if (needsClear(d.service)) {
+      if (!isOneOf(clearModes, d.clearMode)) e.clearMode = 'clearMode'
+      const places = parseClearAreas(d.clearAreas)
+      if (places.length === 0) e.clearAreas = 'clearAreas'
+      for (const place of places) {
+        if (!inRange(d[placeArea[place]], 1, 100000)) e[placeArea[place]] = placeArea[place]
+        if (!isOneOf(fillLevels, d[placeFill[place]])) e[placeFill[place]] = placeFill[place]
+      }
+      if (places.includes('living') && !inRange(d.rooms, 1, 50, true)) e.rooms = 'rooms'
+      if (d.clearMode === 'mixed' && !isOneOf(disposeShares, d.disposeShare)) e.disposeShare = 'disposeShare'
+      if (needsMove(d)) {
+        const to = d.newAddress.trim()
+        if (to.length < 5 || to.length > 200) e.newAddress = 'newAddress'
+        if (!inRange(d.newFloor, -2, 99, true)) e.newFloor = 'newFloor'
+        if (d.newElevator !== 'yes' && d.newElevator !== 'no') e.newElevator = 'newElevator'
+        if (!inRange(d.distance, 0, 1000)) e.distance = 'distance'
+      }
+    }
 
     const clean = activeCleanScope(d)
     if (clean.includes('treppenhaus')) {

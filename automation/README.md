@@ -57,7 +57,10 @@ der Website-Aufruf bekommt dann `{"ok": false}` (HTTP 502).
 
 ```json
 {"service":"clear","objectScope":"unit","objectType":"wohnung","cleanScope":"","buildScope":"","serviceType":"onetime",
- "units":"1","area":"60","floor":"3","elevator":"no","distance":"15","fillLevel":"full",
+ "units":"1","area":"","floor":"3","elevator":"no","distance":"",
+ "clearMode":"dispose","clearAreas":"living,keller","livingArea":"60","livingFill":"full","rooms":"2",
+ "kellerArea":"8","kellerFill":"normal","atticArea":"","atticFill":"","garageArea":"","garageFill":"",
+ "officeArea":"","officeFill":"","disposeShare":"","newAddress":"","newFloor":"","newElevator":"","clearExtras":"heavy",
  "stairwells":"","storeys":"","stairFrequency":"","bins":"","sidewalk":"","gardenArea":"",
  "interiorArea":"","interiorFrequency":"","windows":"","glassArea":"","windowFrequency":"",
  "name":"…","company":"","address":"…","email":"…","phone":"","notes":"…",
@@ -66,7 +69,8 @@ der Website-Aufruf bekommt dann `{"ok": false}` (HTTP 502).
 ```
 
 `objectType`: mfh, efh, gewerbeobjekt (objectScope building) oder wohnung, gewerbe (objectScope unit).
-Die Clean-Felder werden nur zur gewählten Leistung gesendet und in Odoo als JSON in `x_moka_clean_input` gespeichert.
+Die Clean-Felder werden nur zur gewählten Leistung gesendet und in Odoo als JSON in `x_moka_clean_input` gespeichert,
+die Clear-Felder ebenso in `x_moka_clear_input` (`distance` = km zwischen alter und neuer Adresse beim Umzug).
 
 Antwort: `{"ok": true, "ref": "A-00012"}`. Make-Webhooks nehmen höchstens ca. 5 MB pro Anfrage an;
 `src/lib/quote-submit.ts` verkleinert Fotos deshalb im Browser (max. 1600 px, JPEG) und begrenzt die Anhänge auf 3,4 MB.
