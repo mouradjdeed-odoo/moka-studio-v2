@@ -11,7 +11,6 @@ import {
   Building2,
   Camera,
   Car,
-  CalendarCheck,
   Cable,
   Check,
   CheckCircle2,
@@ -26,7 +25,6 @@ import {
   Loader2,
   Paintbrush,
   Paperclip,
-  Repeat,
   ScrollText,
   Send,
   Snowflake,
@@ -71,7 +69,10 @@ import {
   placeFill,
   type ClearMode,
   type ClearPlace,
-  needsGeneral,
+  needsVerwaltung,
+  mgmtTypes,
+  parseMgmtTypes,
+  type MgmtType,
   needsUnits,
   fillLevels,
   type FillLevel,
@@ -82,7 +83,6 @@ import {
   parseBuildScope,
   parseCleanScope,
   parseServices,
-  serviceTypes,
   stairFrequencies,
   validateStep,
   windowFrequencies,
@@ -125,6 +125,12 @@ const renoWorkIcons: Record<RenoWork, typeof Sparkles> = {
   wallpaper: ScrollText,
   floor: LayoutGrid,
   doors: DoorOpen,
+}
+const mgmtIcons: Record<MgmtType, typeof Sparkles> = {
+  miet: KeyRound,
+  weg: Building2,
+  sev: DoorOpen,
+  technik: Wrench,
 }
 const clearModeIcons: Record<ClearMode, typeof Sparkles> = { dispose: Trash2, move: Truck, mixed: Split }
 const clearPlaceIcons: Record<ClearPlace, typeof Sparkles> = {
@@ -186,6 +192,12 @@ const emptyData: QuoteData = {
   fiberEntrances: '',
   fiberConnection: '',
   fiberDucts: '',
+  mgmtTypes: '',
+  mgmtFlats: '',
+  mgmtCommercial: '',
+  mgmtParking: '',
+  mgmtStart: '',
+  mgmtSwitch: '',
   stairwells: '',
   storeys: '',
   stairFrequency: '',
@@ -275,7 +287,7 @@ function ChoiceCard({
         <Icon className="size-5" aria-hidden="true" />
       </span>
       <span className="flex min-w-0 flex-col">
-        <span className="font-semibold text-primary">{title}</span>
+        <span className="hyphens-auto break-words font-semibold text-primary">{title}</span>
         {subtitle && <span className="text-sm text-muted-foreground">{subtitle}</span>}
       </span>
       {checked && (
@@ -448,7 +460,7 @@ function ScopeGroup<T extends string>({
   labels,
   error,
 }: {
-  name: 'service' | 'cleanScope' | 'buildScope' | 'clearAreas' | 'renoWorks'
+  name: 'service' | 'cleanScope' | 'buildScope' | 'clearAreas' | 'renoWorks' | 'mgmtTypes'
   legend: string
   hint: string
   options: readonly T[]
@@ -494,7 +506,7 @@ function ScopeGroup<T extends string>({
                 <Icon className="size-5" aria-hidden="true" />
               </span>
               <span className="flex min-w-0 flex-col pe-6">
-                <span className="font-semibold text-primary">{labels[option].title}</span>
+                <span className="hyphens-auto break-words font-semibold text-primary">{labels[option].title}</span>
                 <span className="text-sm text-muted-foreground">{labels[option].subtitle}</span>
               </span>
               <span
@@ -625,7 +637,6 @@ export function QuoteForm() {
   if (done) {
     const serviceName = services.filter((s) => parseServices(data.service).includes(s.id)).map((s) => s.name).join(', ')
     const clean = activeCleanScope(data)
-    const general = needsGeneral(data.service)
     const has = (c: CleanScope) => clean.includes(c)
     const pick = <K extends string>(labels: Record<K, string>, key: string) => labels[key as K] ?? ''
     const fillLabels = Object.fromEntries(fillLevels.map((l) => [l, f.fillLevels[l].title])) as Record<FillLevel, string>
@@ -637,12 +648,20 @@ export function QuoteForm() {
         ? [[f.buildScope, parseBuildScope(data.buildScope).map((c) => f.buildScopes[c].title).join(', ')]]
         : []),
       [f.objectType, pick(f.objectTypes, data.objectType)],
-      ...(general ? [[f.serviceType, f.serviceTypes[data.serviceType as keyof typeof f.serviceTypes]?.title]] : []),
       ...(needsUnits(data) ? [[f.units, data.units]] : []),
       [f.address, data.address],
       ...(data.billingAddress.trim() ? [[f.billingAddress, data.billingAddress]] : []),
       ...(data.company.trim() ? [[f.company, data.company]] : []),
-      ...(general ? [[f.area, `${data.area} ${f.areaUnit}`]] : []),
+      ...(needsVerwaltung(data.service)
+        ? [
+            [f.mgmtTypes, parseMgmtTypes(data.mgmtTypes).map((m) => f.mgmtTypeLabels[m].title).join(', ')],
+            [f.mgmtFlats, data.mgmtFlats],
+            [f.mgmtCommercial, data.mgmtCommercial],
+            ...(data.mgmtParking.trim() ? [[f.mgmtParking, data.mgmtParking]] : []),
+            [f.mgmtStart, data.mgmtStart],
+            [f.mgmtSwitch, data.mgmtSwitch === 'yes' ? f.yes : f.no],
+          ]
+        : []),
       ...(needsFloor(data.service)
         ? [
             [f.floor, data.floor],
@@ -911,38 +930,6 @@ export function QuoteForm() {
               {f.estimateNote}
             </p>
 
-            {needsGeneral(data.service) && (
-              <fieldset
-                className="sm:col-span-2"
-                aria-describedby={described('serviceType', parseServices(data.service).length > 1 ? 'serviceType-hint' : undefined)}
-              >
-                <legend className="mb-3 text-sm font-medium text-foreground">
-                  {f.serviceType} <span className="text-destructive">*</span>
-                </legend>
-                {parseServices(data.service).length > 1 && (
-                  <p id="serviceType-hint" className="-mt-1.5 mb-3 text-xs text-muted-foreground">
-                    {f.serviceTypeHintMixed}
-                  </p>
-                )}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {serviceTypes.map((type) => (
-                    <ChoiceCard
-                      key={type}
-                      name="serviceType"
-                      value={type}
-                      checked={data.serviceType === type}
-                      onChange={(v) => update('serviceType', v)}
-                      icon={type === 'recurring' ? Repeat : CalendarCheck}
-                      title={f.serviceTypes[type].title}
-                      subtitle={f.serviceTypes[type].subtitle}
-                      invalid={!!errors.serviceType}
-                    />
-                  ))}
-                </div>
-                <FieldError id="serviceType-error" message={err('serviceType')} />
-              </fieldset>
-            )}
-
             {needsUnits(data) && (
               <div className="sm:col-span-2 sm:max-w-xs">
                 <NumberField
@@ -957,19 +944,6 @@ export function QuoteForm() {
                   error={err('units')}
                 />
               </div>
-            )}
-
-            {needsGeneral(data.service) && (
-              <NumberField
-                id="area"
-                label={f.area}
-                value={data.area}
-                onChange={(v) => update('area', v)}
-                unit={f.areaUnit}
-                min={1}
-                max={100000}
-                error={err('area')}
-              />
             )}
 
             {needsFloor(data.service) && (
@@ -1319,6 +1293,79 @@ export function QuoteForm() {
                     {f.sanierungHint}
                   </p>
                 )}
+              </div>
+            )}
+
+            {needsVerwaltung(data.service) && (
+              <div className="grid gap-5 border-t pt-5 sm:col-span-2 sm:grid-cols-2 animate-in fade-in duration-300">
+                <h4 className="text-base font-semibold text-primary sm:col-span-2">{f.mgmtDetails}</h4>
+                <div className="sm:col-span-2">
+                  <ScopeGroup
+                    name="mgmtTypes"
+                    legend={f.mgmtTypes}
+                    hint={f.cleanScopeHint}
+                    options={mgmtTypes}
+                    selected={parseMgmtTypes(data.mgmtTypes)}
+                    onChange={(v) => update('mgmtTypes', v)}
+                    icons={mgmtIcons}
+                    labels={f.mgmtTypeLabels}
+                    error={err('mgmtTypes')}
+                  />
+                </div>
+                <NumberField
+                  id="mgmtFlats"
+                  label={f.mgmtFlats}
+                  value={data.mgmtFlats}
+                  onChange={(v) => update('mgmtFlats', v)}
+                  min={0}
+                  max={9999}
+                  step={1}
+                  error={err('mgmtFlats')}
+                />
+                <NumberField
+                  id="mgmtCommercial"
+                  label={f.mgmtCommercial}
+                  value={data.mgmtCommercial}
+                  onChange={(v) => update('mgmtCommercial', v)}
+                  min={0}
+                  max={9999}
+                  step={1}
+                  error={err('mgmtCommercial')}
+                />
+                <NumberField
+                  id="mgmtParking"
+                  label={f.mgmtParking}
+                  value={data.mgmtParking}
+                  onChange={(v) => update('mgmtParking', v)}
+                  min={0}
+                  max={9999}
+                  step={1}
+                  optional={f.optional}
+                  error={err('mgmtParking')}
+                />
+                <div>
+                  <Label htmlFor="mgmtStart">{f.mgmtStart}</Label>
+                  <input
+                    id="mgmtStart"
+                    type="date"
+                    value={data.mgmtStart}
+                    onChange={(e) => update('mgmtStart', e.target.value)}
+                    aria-invalid={!!errors.mgmtStart}
+                    aria-describedby={described('mgmtStart')}
+                    className={inputClass}
+                    dir="ltr"
+                  />
+                  <FieldError id="mgmtStart-error" message={err('mgmtStart')} />
+                </div>
+                <PillGroup
+                  name="mgmtSwitch"
+                  legend={f.mgmtSwitch}
+                  options={['yes', 'no'] as const}
+                  labels={{ yes: f.yes, no: f.no }}
+                  value={data.mgmtSwitch}
+                  onChange={(v) => update('mgmtSwitch', v)}
+                  error={err('mgmtSwitch')}
+                />
               </div>
             )}
 

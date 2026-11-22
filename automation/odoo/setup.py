@@ -42,6 +42,11 @@ PRICING = {
     'build': {'renovierung': {'wall_factor': 3.5, 'paint_m2': 9, 'poor_pct': 0.3, 'wallpaper_m2': 12, 'floor_lay_m2': 25,
                               'floor_material_m2': 15, 'floor_remove_m2': 5, 'door': 60},
               'glasfaser': {'base': 500, 'per_unit': 400, 'no_ducts_pct': 0.3}, 'range': [0.85, 1.3]},
+    # Verwaltung model v2 (2026-11-22), see migrate_verwaltung_v2.py.
+    'verwaltung': {'miet': {'flat': 30, 'commercial': 45, 'parking': 5, 'min': 250},
+                   'weg': {'flat': 30, 'commercial': 40, 'parking': 5, 'min': 250},
+                   'sev': {'flat': 35, 'commercial': 50, 'parking': 5, 'min': 0},
+                   'technik': {'flat': 15, 'commercial': 20, 'parking': 0, 'min': 250}, 'range': [0.9, 1.15]},
 }
 DEFAULT_PARAMS = {'moka.pricing': json.dumps(PRICING), 'moka.notify_emails': os.environ.get('MOKA_NOTIFY', ''),
                   'moka.decision_url': os.environ.get('MOKA_DECISION_URL', '')}

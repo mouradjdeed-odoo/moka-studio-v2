@@ -9,6 +9,7 @@ const base: QuoteData = {
   newAddress: "", newFloor: "", newElevator: "", clearExtras: "",
   buildDeadline: "", renoWorks: "", renoArea: "", renoRooms: "", wallCondition: "", floorArea: "", doors: "",
   fiberUnits: "", fiberStoreys: "", fiberEntrances: "", fiberConnection: "", fiberDucts: "",
+  mgmtTypes: "", mgmtFlats: "", mgmtCommercial: "", mgmtParking: "", mgmtStart: "", mgmtSwitch: "",
   stairwells: "", storeys: "", stairFrequency: "", bins: "", sidewalk: "", gardenArea: "", interiorArea: "",
   interiorFrequency: "", windows: "", glassArea: "", windowFrequency: "",
   name: "Max", company: "", address: "Musterstr. 1", billingAddress: "", email: "a@b.de", phone: "", notes: "Bitte Angebot",
@@ -106,6 +107,14 @@ describe("quote rules", () => {
     const g = { ...base, service: "build", buildScope: "glasfaser", buildDeadline: "flexible", serviceType: "", area: "" };
     expect(Object.keys(validateStep(1, g, [])).sort()).toEqual(["fiberConnection", "fiberDucts", "fiberEntrances", "fiberStoreys", "fiberUnits"]);
     expect(validateStep(1, { ...g, fiberUnits: "12", fiberStoreys: "4", fiberEntrances: "1", fiberConnection: "yes", fiberDucts: "unknown" }, [])).toEqual({});
+  });
+  it("asks kind of management, unit counts, start and current manager for Verwaltung", () => {
+    const v = { ...base, service: "verwaltung", serviceType: "", area: "", floor: "", elevator: "" };
+    expect(Object.keys(validateStep(1, v, [])).sort()).toEqual(["mgmtCommercial", "mgmtFlats", "mgmtStart", "mgmtSwitch", "mgmtTypes"]);
+    const ok = { ...v, mgmtTypes: "miet,technik", mgmtFlats: "10", mgmtCommercial: "2", mgmtStart: "2027-01-01", mgmtSwitch: "no" };
+    expect(validateStep(1, ok, [])).toEqual({});
+    expect(validateStep(1, { ...ok, mgmtFlats: "0", mgmtCommercial: "0" }, []).mgmtFlats).toBe("mgmtFlats");
+    expect(toPayload(ok).serviceType).toBe("recurring");
   });
   it("allows at most 5 files of 5 MB", () => {
     expect(MAX_FILES).toBe(5);
