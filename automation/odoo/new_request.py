@@ -19,8 +19,15 @@ else:
     units_ids = [u for u in s('service').split(',') if u]
     UNIT = {'clean': 'MOKA Clean', 'clear': 'MOKA Clear', 'build': 'MOKA Build', 'verwaltung': 'MOKA Verwaltung'}
     SCOPE = {'muell': 'Müllservice', 'treppenhaus': 'Treppenhausreinigung', 'hausmeister': 'Hausmeisterservice',
-             'winter': 'Winterdienst', 'garten': 'Gartenpflege', 'renovierung': 'Renovierung',
-             'trockenbau': 'Trockenbau', 'sanierung': 'Sanierung', 'glasfaser': 'Glasfaser & Infrastruktur'}
+             'winter': 'Winterdienst', 'garten': 'Gartenpflege', 'innen': 'Unterhaltsreinigung',
+             'endreinigung': 'Endreinigung', 'fenster': 'Fensterreinigung', 'sonder': 'Sonderreinigung',
+             'renovierung': 'Renovierung', 'trockenbau': 'Trockenbau', 'sanierung': 'Sanierung',
+             'glasfaser': 'Glasfaser & Infrastruktur'}
+    OBJECT = {'mfh': 'Mehrfamilienhaus', 'efh': 'Einfamilienhaus', 'gewerbeobjekt': 'Gewerbeimmobilie',
+              'wohnung': 'Wohnung', 'gewerbe': 'Büro / Gewerbeeinheit', 'haus': 'Haus'}
+    FREQ = {'twice_weekly': '2× pro Woche', 'daily': 'täglich (Mo–Fr)', 'three_weekly': '3× pro Woche',
+            'weekly': 'wöchentlich', 'biweekly': 'alle 2 Wochen', 'once': 'einmalig', 'quarterly': 'alle 3 Monate',
+            'monthly': 'monatlich'}
     clean_scope = [c for c in s('cleanScope').split(',') if c]
     build_scope = [c for c in s('buildScope').split(',') if c]
     units_label = ', '.join(UNIT.get(u, u) for u in units_ids)
@@ -30,28 +37,70 @@ else:
     cfg = json.loads(ICP.get_param('moka.pricing') or '{}')
     units, area, floor, dist = int(num('units') or 0), num('area'), int(num('floor') or 0), num('distance')
     lines, lo, hi = [], 0.0, 0.0
-    if 'clean' in units_ids and s('serviceType') == 'recurring':
+    # MOKA Clean: each service has its own measure (see docs/PROJECT_NOTES.md, "Preismodell MOKA Clean").
+    CLEAN_KEYS = ('stairwells', 'storeys', 'stairFrequency', 'bins', 'sidewalk', 'gardenArea', 'interiorArea',
+                  'interiorFrequency', 'windows', 'glassArea', 'windowFrequency')
+    clean_in = dict((k, s(k)) for k in CLEAN_KEYS if s(k))
+    obj = s('objectType')
+    if 'clean' in units_ids:
         c = cfg.get('clean', {})
-        monthly = 0.0
-        if 'treppenhaus' in clean_scope:
-            v = c['treppenhaus']['base'] + c['treppenhaus']['per_unit'] * units
-            monthly += v; lines.append('Treppenhausreinigung: %.2f €/Monat' % v)
-        if 'muell' in clean_scope:
-            v = c['muell']['base'] + c['muell']['per_unit'] * units
-            monthly += v; lines.append('Müllservice: %.2f €/Monat' % v)
-        if 'hausmeister' in clean_scope:
-            v = max(c['hausmeister']['min'], c['hausmeister']['per_m2'] * area)
-            monthly += v; lines.append('Hausmeisterservice: %.2f €/Monat' % v)
-        if 'winter' in clean_scope:
-            v = (c['winter']['base'] + c['winter']['per_unit'] * units) / c['winter']['months']
-            monthly += v; lines.append('Winterdienst (Nov.–März): %.2f €/Monat' % v)
+        monthly, once = 0.0, 0.0
+        if 'treppenhaus' in clean_scope and 'per_floor' in c.get('treppenhaus', {}):
+            t = c['treppenhaus']
+            floors = int(num('stairwells')) * int(num('storeys'))
+            fq = t['freq'].get(s('stairFrequency'), 1)
+            v = (t['base'] + t['per_floor'] * floors) * fq
+            monthly += v
+            lines.append('Treppenhausreinigung (%s): %d Aufgänge × %d Etagen = %d; (%s + %s × %d) × %s = %.2f €/Monat'
+                         % (FREQ.get(s('stairFrequency'), '?'), int(num('stairwells')), int(num('storeys')), floors,
+                            t['base'], t['per_floor'], floors, fq, v))
+        if 'muell' in clean_scope and 'per_bin' in c.get('muell', {}):
+            v = c['muell']['base'] + c['muell']['per_bin'] * int(num('bins'))
+            monthly += v; lines.append('Müllservice: %s + %s × %d Tonnen = %.2f €/Monat' % (c['muell']['base'], c['muell']['per_bin'], int(num('bins')), v))
+        if 'hausmeister' in clean_scope and 'per_unit' in c.get('hausmeister', {}):
+            v = c['hausmeister']['base'] + c['hausmeister']['per_unit'] * units
+            monthly += v; lines.append('Hausmeisterservice: %s + %s × %d Einheiten = %.2f €/Monat' % (c['hausmeister']['base'], c['hausmeister']['per_unit'], units, v))
+        if 'winter' in clean_scope and 'per_m' in c.get('winter', {}):
+            w = c['winter']
+            v = (w['base'] + w['per_m'] * num('sidewalk')) / w['months']
+            monthly += v; lines.append('Winterdienst (Nov.–März): (%s + %s × %.0f m) ÷ %s = %.2f €/Monat' % (w['base'], w['per_m'], num('sidewalk'), w['months'], v))
         if 'garten' in clean_scope:
-            lines.append('Gartenpflege: keine Schätzung, Besichtigung nötig')
+            lines.append('Gartenpflege: ca. %.0f m² Grünfläche, Preis nach Besichtigung' % num('gardenArea'))
+        if 'innen' in clean_scope and 'innen' in c:
+            i = c['innen']
+            rate = i['per_m2_visit']['gewerbe' if obj in ('gewerbe', 'gewerbeobjekt') else 'wohnen']
+            visit = max(i['min_visit'], rate * num('interiorArea'))
+            n = i['visits'].get(s('interiorFrequency'), 0)
+            v = visit * n
+            monthly += v
+            lines.append('Unterhaltsreinigung (%s): je Reinigung max(%s; %s × %.0f m²) = %.2f € × %s Reinigungen = %.2f €/Monat'
+                         % (FREQ.get(s('interiorFrequency'), '?'), i['min_visit'], rate, num('interiorArea'), visit, n, v))
+        if 'endreinigung' in clean_scope and 'endreinigung' in c:
+            e = c['endreinigung']
+            v = e['base'] + e['per_m2'] * num('interiorArea')
+            once += v; lines.append('Endreinigung: %s + %s × %.0f m² = %.2f € einmalig' % (e['base'], e['per_m2'], num('interiorArea'), v))
+        if 'fenster' in clean_scope and 'fenster' in c:
+            fz = c['fenster']
+            per = fz['base'] + fz['per_window'] * int(num('windows')) + fz['per_m2_glass'] * num('glassArea')
+            yearly = fz['per_year'].get(s('windowFrequency'), 1)
+            detail = '%s + %s × %d Fenster + %s × %.0f m² Glas = %.2f € je Reinigung' % (
+                fz['base'], fz['per_window'], int(num('windows')), fz['per_m2_glass'], num('glassArea'), per)
+            if yearly > 1:
+                monthly += per * yearly / 12
+                lines.append('Fensterreinigung (%s): %s; × %s ÷ 12 = %.2f €/Monat' % (FREQ.get(s('windowFrequency'), '?'), detail, yearly, per * yearly / 12))
+            else:
+                once += per; lines.append('Fensterreinigung (einmalig): %s' % detail)
+        if 'sonder' in clean_scope:
+            lines.append('Sonderreinigung: keine Schätzung, Stunden nach Aufwand (Stundensatz %s €/Std.)' % c.get('hourly'))
+        if not clean_scope:
+            lines.append('Clean: keine Schätzung (Stundensatz %s €/Std.)' % c.get('hourly'))
+        r = c.get('range', [0.9, 1.2])
         if monthly:
-            lo += monthly * c['range'][0]; hi += monthly * c['range'][1]
-            lines.append('Clean gesamt: %.2f €/Monat (Spanne %.0f–%.0f €/Monat)' % (monthly, monthly * c['range'][0], monthly * c['range'][1]))
-    elif 'clean' in units_ids:
-        lines.append('Clean einmalig: keine Schätzung (Stundensatz %s €/Std.)' % cfg.get('clean', {}).get('hourly'))
+            lo += monthly * r[0]; hi += monthly * r[1]
+            lines.append('Clean laufend: %.2f €/Monat (Spanne %.0f–%.0f €/Monat)' % (monthly, monthly * r[0], monthly * r[1]))
+        if once:
+            lo += once * r[0]; hi += once * r[1]
+            lines.append('Clean einmalig: %.2f € (Spanne %.0f–%.0f €)' % (once, once * r[0], once * r[1]))
     if 'clear' in units_ids:
         c = cfg.get('clear', {})
         fill = c['fill'].get(s('fillLevel'), c['fill']['normal'])
@@ -107,7 +156,7 @@ else:
         'expected_revenue': (lo + hi) / 2 if hi else 0,
         'x_moka_services': units_label,
         'x_moka_scope': scope_label,
-        'x_moka_object_type': s('objectType') if s('objectType') in ('wohnung', 'haus', 'gewerbe') else False,
+        'x_moka_object_type': obj if obj in OBJECT else False,
         'x_moka_service_type': s('serviceType') if s('serviceType') in ('recurring', 'onetime') else False,
         'x_moka_units': units,
         'x_moka_area': area,
@@ -119,6 +168,7 @@ else:
         'x_moka_estimate_min': lo,
         'x_moka_estimate_max': hi,
         'x_moka_estimate_details': '\n'.join(lines),
+        'x_moka_clean_input': json.dumps(clean_in) if clean_in else False,
         'x_moka_token': env.context.get('moka_token') or False,
     })
     lead.write({'x_moka_ref': 'A-%05d' % lead.id})
@@ -140,12 +190,21 @@ else:
         link = lambda a: '%s?lead=%d&t=%s&a=%s' % (url, lead.id, lead.x_moka_token, a)
         btn = lambda a, label, color: '<a href="%s" style="display:inline-block;margin:4px 6px 4px 0;padding:10px 16px;border-radius:6px;background:%s;color:#fff;text-decoration:none;font-weight:bold">%s</a>' % (link(a), color, label)
         esc = lambda t: str(t or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        general = any(u in units_ids for u in ('clear', 'build', 'verwaltung'))
         rows = [
             ('Anfrage-Nr.', lead.x_moka_ref), ('Leistung', units_label), ('Bereiche', scope_label),
             ('Auftragsart', dict(recurring='Regelmäßig', onetime='Einmalig').get(s('serviceType'), '')),
-            ('Objekt', s('objectType')), ('Objektadresse', s('address')), ('Rechnungsadresse', s('billingAddress') or 'wie Objektadresse'), ('Einheiten', s('units')),
-            ('Fläche', '%s m²' % s('area')), ('Etage', s('floor')), ('Fahrstuhl', 'Ja' if s('elevator') == 'yes' else 'Nein'),
+            ('Objekt', OBJECT.get(obj, obj)), ('Objektadresse', s('address')), ('Rechnungsadresse', s('billingAddress') or 'wie Objektadresse'),
+            ('Einheiten', s('units') if general or 'hausmeister' in clean_scope else ''),
+            ('Fläche', general and s('area') and '%s m²' % s('area')), ('Etage', general and s('floor')),
+            ('Fahrstuhl', general and s('elevator') and ('Ja' if s('elevator') == 'yes' else 'Nein')),
             ('Entfernung', s('distance') and '%s km' % s('distance')), ('Füllgrad', s('fillLevel')),
+            ('Treppenhäuser × Etagen', s('stairwells') and '%s × %s (%s)' % (s('stairwells'), s('storeys'), FREQ.get(s('stairFrequency'), ''))),
+            ('Mülltonnen', s('bins')), ('Gehweg & Wege', s('sidewalk') and 'ca. %s m' % s('sidewalk')),
+            ('Grünfläche', s('gardenArea') and 'ca. %s m²' % s('gardenArea')),
+            ('Reinigungsfläche', s('interiorArea') and 'ca. %s m²' % s('interiorArea')),
+            ('Rhythmus Reinigung', FREQ.get(s('interiorFrequency'), '')),
+            ('Fenster', s('windowFrequency') and '%s Fenster%s, %s' % (s('windows') or '0', s('glassArea') and ' + ca. %s m² Glas' % s('glassArea') or '', FREQ.get(s('windowFrequency'), ''))),
             ('Name', name), ('Firma', s('company')), ('E-Mail', email), ('Telefon', s('phone')),
             ('Anhänge', str(len(p.get('files') or []))),
         ]

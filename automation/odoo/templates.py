@@ -11,8 +11,9 @@ TEMPLATES = {
         'body_html': (
             '<div><p>Guten Tag <t t-out="object.contact_name or object.partner_id.name or \'\'"/>,</p>'
             '<p>vielen Dank für Ihre Anfrage. Wir haben sie unter der Nummer <strong t-out="object.x_moka_ref"/> erfasst.</p>'
-            '<p>Wir prüfen jetzt Ihre Angaben und kalkulieren die Kosten. In Kürze erhalten Sie von uns ein ausführliches '
-            'Angebot per E-Mail. Falls wir noch Fragen haben, melden wir uns telefonisch oder per E-Mail bei Ihnen.</p>'
+            '<p>Wir prüfen jetzt Ihre Angaben und kalkulieren die Kosten. In Kürze erhalten Sie von uns ein unverbindliches '
+            'Richtangebot per E-Mail. Den genauen Preis bestätigen wir, falls nötig, nach einer kostenlosen Besichtigung. '
+            'Falls wir noch Fragen haben, melden wir uns telefonisch oder per E-Mail bei Ihnen.</p>'
             + SIGNATURE + '</div>'
         ),
     },
