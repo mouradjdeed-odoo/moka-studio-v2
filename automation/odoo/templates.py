@@ -2,7 +2,7 @@
 
 SIGNATURE = (
     '<p>Mit freundlichen Grüßen<br/>Ihr MOKA-Team</p>'
-    '<p style="color:#666;font-size:12px">Moka Service UG · Lietzenburger Straße 29 · 10789 Berlin · Tel. 0163 6666614</p>'
+    '<p style="color:#666;font-size:12px">Moka Service UG · Lietzenburger Straße 29 · 10789 Berlin · Tel. +49 163 6666614</p>'
 )
 
 TEMPLATES = {

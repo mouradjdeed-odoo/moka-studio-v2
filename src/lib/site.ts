@@ -3,7 +3,7 @@ export const site = {
   /** Legal entity, for Impressum and Datenschutz. */
   legalName: 'Moka Service UG',
   managingDirector: 'Kamel Allam',
-  phoneDisplay: '0163 6666614',
+  phoneDisplay: '+49 163 6666614',
   phoneHref: 'tel:+491636666614',
   /** TODO: placeholder until the domain is decided (open decision 11). */
   email: 'info@moka-objektservice.de',
