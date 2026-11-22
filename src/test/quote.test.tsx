@@ -7,6 +7,8 @@ const base: QuoteData = {
   clearMode: "dispose", clearAreas: "living", livingArea: "50", livingFill: "normal", rooms: "2", kellerArea: "", kellerFill: "",
   atticArea: "", atticFill: "", garageArea: "", garageFill: "", officeArea: "", officeFill: "", disposeShare: "",
   newAddress: "", newFloor: "", newElevator: "", clearExtras: "",
+  buildDeadline: "", renoWorks: "", renoArea: "", renoRooms: "", wallCondition: "", floorArea: "", doors: "",
+  fiberUnits: "", fiberStoreys: "", fiberEntrances: "", fiberConnection: "", fiberDucts: "",
   stairwells: "", storeys: "", stairFrequency: "", bins: "", sidewalk: "", gardenArea: "", interiorArea: "",
   interiorFrequency: "", windows: "", glassArea: "", windowFrequency: "",
   name: "Max", company: "", address: "Musterstr. 1", billingAddress: "", email: "a@b.de", phone: "", notes: "Bitte Angebot",
@@ -86,6 +88,24 @@ describe("quote rules", () => {
     expect(toPayload({ ...unit, cleanScope: "fenster", windowFrequency: "once" }).serviceType).toBe("onetime");
     expect(toPayload({ ...unit, cleanScope: "fenster", windowFrequency: "monthly" }).serviceType).toBe("recurring");
     expect(toPayload({ ...unit, cleanScope: "treppenhaus,innen" }).cleanScope).toBe("innen");
+  });
+  it("asks only the timeframe for drywall and refurbishment", () => {
+    const b = { ...base, service: "build", buildScope: "trockenbau,sanierung", serviceType: "", area: "" };
+    expect(validateStep(1, b, [])).toEqual({ buildDeadline: "buildDeadline" });
+    expect(validateStep(1, { ...b, buildDeadline: "asap" }, [])).toEqual({});
+    expect(toPayload({ ...b, buildDeadline: "asap" }).serviceType).toBe("onetime");
+  });
+  it("asks the measures of the chosen renovation works", () => {
+    const r = { ...base, service: "build", buildScope: "renovierung", buildDeadline: "month", serviceType: "", area: "" };
+    expect(validateStep(1, r, []).renoWorks).toBe("renoWorks");
+    const e = validateStep(1, { ...r, renoWorks: "paint,floor,doors" }, []);
+    expect(Object.keys(e).sort()).toEqual(["doors", "floorArea", "renoArea", "renoRooms", "wallCondition"]);
+    expect(validateStep(1, { ...r, renoWorks: "floor", renoArea: "70", renoRooms: "3", floorArea: "30" }, [])).toEqual({});
+  });
+  it("asks units, floors, entrances, connection and ducts for fibre", () => {
+    const g = { ...base, service: "build", buildScope: "glasfaser", buildDeadline: "flexible", serviceType: "", area: "" };
+    expect(Object.keys(validateStep(1, g, [])).sort()).toEqual(["fiberConnection", "fiberDucts", "fiberEntrances", "fiberStoreys", "fiberUnits"]);
+    expect(validateStep(1, { ...g, fiberUnits: "12", fiberStoreys: "4", fiberEntrances: "1", fiberConnection: "yes", fiberDucts: "unknown" }, [])).toEqual({});
   });
   it("allows at most 5 files of 5 MB", () => {
     expect(MAX_FILES).toBe(5);

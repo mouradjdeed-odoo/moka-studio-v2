@@ -139,10 +139,45 @@ else:
                 if cl_halte:
                     lines.append((P('Halteverbotszone (je Adresse)'), cl_halte, mv['halteverbot'], ''))
         if 'MOKA Build' in services:
-            picked = [n for k, n in [('Renovierung', 'Renovierungsarbeiten (Std.)'), ('Trockenbau', 'Trockenbau (Std.)'),
-                                     ('Sanierung', 'Sanierung (Std.)'), ('Glasfaser', 'Glasfaser- & Infrastrukturarbeiten (Std.)')] if k in scope]
-            for n in picked or ['Renovierungsarbeiten (Std.)']:
-                lines.append((P(n), 1, None, 'Umfang nach Besichtigung'))
+            cb = cfg.get('build', {})
+            bi = json.loads(lead.x_moka_build_input or '{}')
+            bn = lambda k: float(str(bi.get(k) or '0').replace(',', '.') or 0)
+            picked = [x.strip() for x in scope.split(',')]
+            works = [x for x in (bi.get('renoWorks') or '').split(',') if x]
+            TRI = {'yes': 'ja', 'no': 'nein', 'unknown': 'weiß nicht'}
+            if 'Renovierung' in picked and works and 'renovierung' in cb:
+                rv = cb['renovierung']
+                walls = round(bn('renoArea') * rv['wall_factor'], 1)
+                where = 'Wohnfläche ca. %.0f m², %d Zimmer' % (bn('renoArea'), bn('renoRooms'))
+                if 'paint' in works:
+                    poor = bi.get('wallCondition') == 'poor'
+                    lines.append((P('Malerarbeiten Wände & Decken (je m²)'), walls, rv['paint_m2'] * (1 + rv['poor_pct'] if poor else 1),
+                                  'ca. %.0f m² Wand- und Deckenfläche (%s)%s' % (walls, where, '; Zustand der Wände schlecht' if poor else '')))
+                if 'wallpaper' in works:
+                    lines.append((P('Tapezierarbeiten (je m²)'), walls, rv['wallpaper_m2'], 'ca. %.0f m² (%s)' % (walls, where)))
+                if 'floor' in works:
+                    lines.append((P('Bodenbelag erneuern inkl. Material und Entfernen (je m²)'), bn('floorArea'),
+                                  rv['floor_lay_m2'] + rv['floor_material_m2'] + rv['floor_remove_m2'], 'Laminat oder Vinyl, ca. %.0f m²' % bn('floorArea')))
+                if 'doors' in works:
+                    lines.append((P('Türen & Heizkörper lackieren (je Stück)'), bn('doors'), rv['door'], ''))
+            elif 'Renovierung' in picked:
+                lines.append((P('Renovierungsarbeiten (Std.)'), 1, None, 'Umfang nach Besichtigung'))
+            if 'Trockenbau' in picked:
+                lines.append((P('Trockenbau (Std.)'), 1, None, 'Umfang nach Besichtigung'))
+            if 'Sanierung' in picked:
+                lines.append((P('Sanierung (Std.)'), 1, None, 'Umfang nach Fotos bzw. Besichtigung'))
+            if 'Glasfaser & Infrastruktur' in picked and bi.get('fiberUnits') and 'glasfaser' in cb:
+                gf = cb['glasfaser']
+                f = 1 + gf['no_ducts_pct'] if bi.get('fiberDucts') == 'no' else 1
+                info = '%d Etagen, %d Eingänge; Glasfaseranschluss im Keller: %s; Leerrohre: %s%s' % (
+                    bn('fiberStoreys'), bn('fiberEntrances'), TRI.get(bi.get('fiberConnection'), '?'), TRI.get(bi.get('fiberDucts'), '?'),
+                    '; inkl. Kernbohrungen und Kabelwege' if bi.get('fiberDucts') == 'no' else '')
+                lines.append((P('Glasfaser-Inhausverkabelung, Grundpauschale'), 1, gf['base'] * f, info))
+                lines.append((P('Glasfaser-Anschluss (je Einheit)'), bn('fiberUnits'), gf['per_unit'] * f, ''))
+            elif 'Glasfaser & Infrastruktur' in picked:
+                lines.append((P('Glasfaser- & Infrastrukturarbeiten (Std.)'), 1, None, 'Umfang nach Besichtigung'))
+            if not any(x in picked for x in ('Renovierung', 'Trockenbau', 'Sanierung', 'Glasfaser & Infrastruktur')):
+                lines.append((P('Renovierungsarbeiten (Std.)'), 1, None, 'Umfang nach Besichtigung'))
         if 'MOKA Verwaltung' in services:
             lines.append((P('Mietverwaltung (je Einheit / Monat)'), units or 1, None, ''))
         monthly = env['sale.subscription.plan'].search([('billing_period_unit', '=', 'month'), ('billing_period_value', '=', 1)], limit=1)

@@ -38,6 +38,10 @@ PRICING = {
               'min': 290, 'zone': {'berlin': 0, 'umland': 50, 'manuell': 0}, 'range': [0.8, 1.3],
               'move': {'hourly': 120, 'm3_per_hour': 4, 'kmh': 25, 'min_hours': 3, 'montage_pct': 0.2,
                        'packing_pct': 0.25, 'halteverbot': 120}},
+    # Build model v2 (2026-11-22), see migrate_build_v2.py.
+    'build': {'renovierung': {'wall_factor': 3.5, 'paint_m2': 9, 'poor_pct': 0.3, 'wallpaper_m2': 12, 'floor_lay_m2': 25,
+                              'floor_material_m2': 15, 'floor_remove_m2': 5, 'door': 60},
+              'glasfaser': {'base': 500, 'per_unit': 400, 'no_ducts_pct': 0.3}, 'range': [0.85, 1.3]},
 }
 DEFAULT_PARAMS = {'moka.pricing': json.dumps(PRICING), 'moka.notify_emails': os.environ.get('MOKA_NOTIFY', ''),
                   'moka.decision_url': os.environ.get('MOKA_DECISION_URL', '')}

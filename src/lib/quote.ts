@@ -46,6 +46,14 @@ export type WindowFrequency = (typeof windowFrequencies)[number]
 
 export const buildScopes = ['renovierung', 'trockenbau', 'sanierung', 'glasfaser'] as const
 export type BuildScope = (typeof buildScopes)[number]
+/** MOKA Build: desired timeframe, asked for every Build request. */
+export const buildDeadlines = ['asap', 'two_weeks', 'month', 'flexible'] as const
+/** Renovation works, each priced automatically. */
+export const renoWorks = ['paint', 'wallpaper', 'floor', 'doors'] as const
+export type RenoWork = (typeof renoWorks)[number]
+export const wallConditions = ['good', 'normal', 'poor'] as const
+/** Yes / no / don't know (fibre questions). */
+export const triOptions = ['yes', 'no', 'unknown'] as const
 export const serviceTypes = ['recurring', 'onetime'] as const
 /** How full a place is, asked per place for MOKA Clear (drives the volume estimate). */
 export const fillLevels = ['low', 'normal', 'full'] as const
@@ -114,6 +122,22 @@ export type QuoteData = {
   newElevator: string
   /** Comma-separated ClearExtra values. */
   clearExtras: string
+  /** MOKA Build: one of `buildDeadlines`. */
+  buildDeadline: string
+  /** Comma-separated RenoWork values (scope "renovierung"). */
+  renoWorks: string
+  renoArea: string
+  renoRooms: string
+  wallCondition: string
+  floorArea: string
+  /** Number of doors and radiators to paint. */
+  doors: string
+  /** Fibre (scope "glasfaser"). */
+  fiberUnits: string
+  fiberStoreys: string
+  fiberEntrances: string
+  fiberConnection: string
+  fiberDucts: string
   /** MOKA Clean details, each only asked when the matching service is chosen. */
   stairwells: string
   storeys: string
@@ -172,6 +196,18 @@ export type QuoteErrorCode =
   | 'newFloor'
   | 'newElevator'
   | 'clearExtras'
+  | 'buildDeadline'
+  | 'renoWorks'
+  | 'renoArea'
+  | 'renoRooms'
+  | 'wallCondition'
+  | 'floorArea'
+  | 'doors'
+  | 'fiberUnits'
+  | 'fiberStoreys'
+  | 'fiberEntrances'
+  | 'fiberConnection'
+  | 'fiberDucts'
   | 'stairwells'
   | 'storeys'
   | 'stairFrequency'
@@ -237,6 +273,18 @@ export const fieldStep: Record<QuoteField, number> = {
   newFloor: 1,
   newElevator: 1,
   clearExtras: 1,
+  buildDeadline: 1,
+  renoWorks: 1,
+  renoArea: 1,
+  renoRooms: 1,
+  wallCondition: 1,
+  floorArea: 1,
+  doors: 1,
+  fiberUnits: 1,
+  fiberStoreys: 1,
+  fiberEntrances: 1,
+  fiberConnection: 1,
+  fiberDucts: 1,
   stairwells: 1,
   storeys: 1,
   stairFrequency: 1,
@@ -269,10 +317,14 @@ const hasService = (value: string, id: string) => parseServices(value).includes(
 export const needsClear = (service: string) => hasService(service, 'clear')
 export const needsCleanScope = (service: string) => hasService(service, 'clean')
 export const needsBuildScope = (service: string) => hasService(service, 'build')
-/** Job type and area are asked for MOKA Build and Verwaltung (Clean and Clear ask per service or place). */
-export const needsGeneral = (service: string) => hasService(service, 'build') || hasService(service, 'verwaltung')
+/** Job type, area and units are asked for MOKA Verwaltung (the other units ask per service or place). */
+export const needsGeneral = (service: string) => hasService(service, 'verwaltung')
 /** Floor and elevator of the property: for Clear, Build and Verwaltung. */
-export const needsFloor = (service: string) => needsGeneral(service) || needsClear(service)
+export const needsFloor = (service: string) => needsGeneral(service) || needsClear(service) || needsBuildScope(service)
+/** Build scopes chosen (only when MOKA Build is selected). */
+export const activeBuildScope = (d: Pick<QuoteData, 'service' | 'buildScope'>): BuildScope[] =>
+  needsBuildScope(d.service) ? parseBuildScope(d.buildScope) : []
+export const parseRenoWorks = (value: string) => value.split(',').filter((v): v is RenoWork => (renoWorks as readonly string[]).includes(v))
 /** Moving to a new address (MOKA Clear "move" or "mixed"). */
 export const needsMove = (d: Pick<QuoteData, 'service' | 'clearMode'>) =>
   needsClear(d.service) && (d.clearMode === 'move' || d.clearMode === 'mixed')
@@ -300,7 +352,7 @@ export const activeCleanScope = (d: Pick<QuoteData, 'service' | 'objectType' | '
   return parseCleanScope(d.cleanScope).filter((c) => allowed.includes(c))
 }
 
-/** Number of units: for Clear, Build and Verwaltung, and for the caretaker of a whole building. */
+/** Number of units: for Verwaltung, and for the caretaker of a whole building. */
 export const needsUnits = (d: Pick<QuoteData, 'service' | 'objectType' | 'cleanScope'>) =>
   needsGeneral(d.service) || (activeCleanScope(d).includes('hausmeister') && d.objectType !== 'efh')
 
@@ -322,6 +374,7 @@ export function toPayload(d: QuoteData): QuoteData {
     cleanScope: activeCleanScope(d).join(','),
     clearAreas: needsClear(d.service) ? parseClearAreas(d.clearAreas).join(',') : '',
     clearExtras: needsClear(d.service) ? activeClearExtras(d).join(',') : '',
+    renoWorks: activeBuildScope(d).includes('renovierung') ? parseRenoWorks(d.renoWorks).join(',') : '',
     serviceType: effectiveServiceType(d),
     units: needsUnits(d) ? d.units : '1',
   }
@@ -394,6 +447,27 @@ export function validateStep(step: number, d: QuoteData, files: FileMeta[]): Quo
       if (!inRange(d.windows, 0, 9999, true) || (Number(d.windows) === 0 && !(Number(glass) > 0)))
         e.windows = 'windows'
       if (!isOneOf(windowFrequencies, d.windowFrequency)) e.windowFrequency = 'windowFrequency'
+    }
+  }
+  if (step === 1 && needsBuildScope(d.service)) {
+    const build = parseBuildScope(d.buildScope)
+    if (!isOneOf(buildDeadlines, d.buildDeadline)) e.buildDeadline = 'buildDeadline'
+    if (build.includes('renovierung')) {
+      const works = parseRenoWorks(d.renoWorks)
+      if (works.length === 0) e.renoWorks = 'renoWorks'
+      if (!inRange(d.renoArea, 1, 10000)) e.renoArea = 'renoArea'
+      if (!inRange(d.renoRooms, 1, 50, true)) e.renoRooms = 'renoRooms'
+      if ((works.includes('paint') || works.includes('wallpaper')) && !isOneOf(wallConditions, d.wallCondition))
+        e.wallCondition = 'wallCondition'
+      if (works.includes('floor') && !inRange(d.floorArea, 1, 10000)) e.floorArea = 'floorArea'
+      if (works.includes('doors') && !inRange(d.doors, 1, 200, true)) e.doors = 'doors'
+    }
+    if (build.includes('glasfaser')) {
+      if (!inRange(d.fiberUnits, 1, 9999, true)) e.fiberUnits = 'fiberUnits'
+      if (!inRange(d.fiberStoreys, 1, 99, true)) e.fiberStoreys = 'fiberStoreys'
+      if (!inRange(d.fiberEntrances, 1, 99, true)) e.fiberEntrances = 'fiberEntrances'
+      if (!isOneOf(triOptions, d.fiberConnection)) e.fiberConnection = 'fiberConnection'
+      if (!isOneOf(triOptions, d.fiberDucts)) e.fiberDucts = 'fiberDucts'
     }
   }
   if (step === 2) {

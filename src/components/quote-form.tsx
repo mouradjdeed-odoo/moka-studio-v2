@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   DoorOpen,
   Hammer,
+  LayoutGrid,
   Home,
   Hotel,
   KeyRound,
@@ -26,6 +27,7 @@ import {
   Paintbrush,
   Paperclip,
   Repeat,
+  ScrollText,
   Send,
   Snowflake,
   Split,
@@ -51,6 +53,13 @@ import {
   needsCleanScope,
   needsClear,
   needsFloor,
+  activeBuildScope,
+  buildDeadlines,
+  parseRenoWorks,
+  renoWorks,
+  triOptions,
+  wallConditions,
+  type RenoWork,
   needsMove,
   activeClearExtras,
   clearExtrasFor,
@@ -111,6 +120,12 @@ const cleanScopeIcons: Record<CleanScope, typeof Sparkles> = {
   fenster: AppWindow,
   sonder: Brush,
 }
+const renoWorkIcons: Record<RenoWork, typeof Sparkles> = {
+  paint: Paintbrush,
+  wallpaper: ScrollText,
+  floor: LayoutGrid,
+  doors: DoorOpen,
+}
 const clearModeIcons: Record<ClearMode, typeof Sparkles> = { dispose: Trash2, move: Truck, mixed: Split }
 const clearPlaceIcons: Record<ClearPlace, typeof Sparkles> = {
   living: Home,
@@ -159,6 +174,18 @@ const emptyData: QuoteData = {
   newFloor: '',
   newElevator: '',
   clearExtras: '',
+  buildDeadline: '',
+  renoWorks: '',
+  renoArea: '',
+  renoRooms: '',
+  wallCondition: '',
+  floorArea: '',
+  doors: '',
+  fiberUnits: '',
+  fiberStoreys: '',
+  fiberEntrances: '',
+  fiberConnection: '',
+  fiberDucts: '',
   stairwells: '',
   storeys: '',
   stairFrequency: '',
@@ -421,7 +448,7 @@ function ScopeGroup<T extends string>({
   labels,
   error,
 }: {
-  name: 'service' | 'cleanScope' | 'buildScope' | 'clearAreas'
+  name: 'service' | 'cleanScope' | 'buildScope' | 'clearAreas' | 'renoWorks'
   legend: string
   hint: string
   options: readonly T[]
@@ -644,6 +671,28 @@ export function QuoteForm() {
               : []),
           ]
         : []),
+      ...(activeBuildScope(data).length
+        ? [
+            [f.buildDeadline, pick(f.buildDeadlines, data.buildDeadline)],
+            ...(activeBuildScope(data).includes('renovierung')
+              ? [
+                  [f.renoWorks, parseRenoWorks(data.renoWorks).map((w) => f.renoWorkLabels[w].title).join(', ')],
+                  [f.renoArea, `${data.renoArea} ${f.areaUnit}, ${data.renoRooms} ${f.renoRooms}`],
+                  ...(data.wallCondition ? [[f.wallCondition, pick(f.wallConditions, data.wallCondition)]] : []),
+                  ...(parseRenoWorks(data.renoWorks).includes('floor') ? [[f.floorArea, `${data.floorArea} ${f.areaUnit}`]] : []),
+                  ...(parseRenoWorks(data.renoWorks).includes('doors') ? [[f.doors, data.doors]] : []),
+                ]
+              : []),
+            ...(activeBuildScope(data).includes('glasfaser')
+              ? [
+                  [f.fiberUnits, data.fiberUnits],
+                  [f.fiberStoreys, `${data.fiberStoreys} / ${data.fiberEntrances}`],
+                  [f.fiberConnection, pick(f.triOptions, data.fiberConnection)],
+                  [f.fiberDucts, pick(f.triOptions, data.fiberDucts)],
+                ]
+              : []),
+          ]
+        : []),
       ...(has('treppenhaus')
         ? [
             [f.stairwells, data.stairwells],
@@ -699,6 +748,8 @@ export function QuoteForm() {
   ) as Record<ServiceId, { title: string; subtitle: string }>
   const cleanNow = activeCleanScope(data)
   const clearAreasNow = parseClearAreas(data.clearAreas)
+  const buildNow = activeBuildScope(data)
+  const renoNow = parseRenoWorks(data.renoWorks)
   const fillLabels = Object.fromEntries(fillLevels.map((l) => [l, f.fillLevels[l].title])) as Record<FillLevel, string>
   const progress = ((step + 1) / totalSteps) * 100
   const stepTitle = [f.step1Title, f.step2Title, f.step3Title][step]
@@ -863,12 +914,12 @@ export function QuoteForm() {
             {needsGeneral(data.service) && (
               <fieldset
                 className="sm:col-span-2"
-                aria-describedby={described('serviceType', needsCleanScope(data.service) ? 'serviceType-hint' : undefined)}
+                aria-describedby={described('serviceType', parseServices(data.service).length > 1 ? 'serviceType-hint' : undefined)}
               >
                 <legend className="mb-3 text-sm font-medium text-foreground">
                   {f.serviceType} <span className="text-destructive">*</span>
                 </legend>
-                {needsCleanScope(data.service) && (
+                {parseServices(data.service).length > 1 && (
                   <p id="serviceType-hint" className="-mt-1.5 mb-3 text-xs text-muted-foreground">
                     {f.serviceTypeHintMixed}
                   </p>
@@ -1121,6 +1172,153 @@ export function QuoteForm() {
                   <Camera className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                   {f.photoHint}
                 </p>
+              </div>
+            )}
+
+            {buildNow.length > 0 && (
+              <div className="grid gap-5 border-t pt-5 sm:col-span-2 sm:grid-cols-2 animate-in fade-in duration-300">
+                <h4 className="text-base font-semibold text-primary sm:col-span-2">{f.buildDetails}</h4>
+                <PillGroup
+                  name="buildDeadline"
+                  legend={f.buildDeadline}
+                  options={buildDeadlines}
+                  labels={f.buildDeadlines}
+                  value={data.buildDeadline}
+                  onChange={(v) => update('buildDeadline', v)}
+                  error={err('buildDeadline')}
+                />
+                {buildNow.includes('renovierung') && (
+                  <>
+                    <div className="sm:col-span-2">
+                      <ScopeGroup
+                        name="renoWorks"
+                        legend={f.renoWorks}
+                        hint={f.cleanScopeHint}
+                        options={renoWorks}
+                        selected={renoNow}
+                        onChange={(v) => update('renoWorks', v)}
+                        icons={renoWorkIcons}
+                        labels={f.renoWorkLabels}
+                        error={err('renoWorks')}
+                      />
+                    </div>
+                    <NumberField
+                      id="renoArea"
+                      label={f.renoArea}
+                      value={data.renoArea}
+                      onChange={(v) => update('renoArea', v)}
+                      unit={f.areaUnit}
+                      min={1}
+                      max={10000}
+                      hint={f.approxHint}
+                      error={err('renoArea')}
+                    />
+                    <NumberField
+                      id="renoRooms"
+                      label={f.renoRooms}
+                      value={data.renoRooms}
+                      onChange={(v) => update('renoRooms', v)}
+                      min={1}
+                      max={50}
+                      step={1}
+                      error={err('renoRooms')}
+                    />
+                    {(renoNow.includes('paint') || renoNow.includes('wallpaper')) && (
+                      <PillGroup
+                        name="wallCondition"
+                        legend={f.wallCondition}
+                        options={wallConditions}
+                        labels={f.wallConditions}
+                        value={data.wallCondition}
+                        onChange={(v) => update('wallCondition', v)}
+                        error={err('wallCondition')}
+                      />
+                    )}
+                    {renoNow.includes('floor') && (
+                      <NumberField
+                        id="floorArea"
+                        label={f.floorArea}
+                        value={data.floorArea}
+                        onChange={(v) => update('floorArea', v)}
+                        unit={f.areaUnit}
+                        min={1}
+                        max={10000}
+                        hint={f.approxHint}
+                        error={err('floorArea')}
+                      />
+                    )}
+                    {renoNow.includes('doors') && (
+                      <NumberField
+                        id="doors"
+                        label={f.doors}
+                        value={data.doors}
+                        onChange={(v) => update('doors', v)}
+                        min={1}
+                        max={200}
+                        step={1}
+                        error={err('doors')}
+                      />
+                    )}
+                  </>
+                )}
+                {buildNow.includes('glasfaser') && (
+                  <>
+                    <NumberField
+                      id="fiberUnits"
+                      label={f.fiberUnits}
+                      value={data.fiberUnits}
+                      onChange={(v) => update('fiberUnits', v)}
+                      min={1}
+                      max={9999}
+                      step={1}
+                      error={err('fiberUnits')}
+                    />
+                    <NumberField
+                      id="fiberStoreys"
+                      label={f.fiberStoreys}
+                      value={data.fiberStoreys}
+                      onChange={(v) => update('fiberStoreys', v)}
+                      min={1}
+                      max={99}
+                      step={1}
+                      error={err('fiberStoreys')}
+                    />
+                    <NumberField
+                      id="fiberEntrances"
+                      label={f.fiberEntrances}
+                      value={data.fiberEntrances}
+                      onChange={(v) => update('fiberEntrances', v)}
+                      min={1}
+                      max={99}
+                      step={1}
+                      error={err('fiberEntrances')}
+                    />
+                    <PillGroup
+                      name="fiberConnection"
+                      legend={f.fiberConnection}
+                      options={triOptions}
+                      labels={f.triOptions}
+                      value={data.fiberConnection}
+                      onChange={(v) => update('fiberConnection', v)}
+                      error={err('fiberConnection')}
+                    />
+                    <PillGroup
+                      name="fiberDucts"
+                      legend={f.fiberDucts}
+                      options={triOptions}
+                      labels={f.triOptions}
+                      value={data.fiberDucts}
+                      onChange={(v) => update('fiberDucts', v)}
+                      error={err('fiberDucts')}
+                    />
+                  </>
+                )}
+                {buildNow.includes('sanierung') && (
+                  <p className="flex items-start gap-2 text-sm text-muted-foreground sm:col-span-2">
+                    <Camera className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                    {f.sanierungHint}
+                  </p>
+                )}
               </div>
             )}
 
