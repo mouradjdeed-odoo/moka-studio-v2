@@ -101,19 +101,70 @@ else:
         if once:
             lo += once * r[0]; hi += once * r[1]
             lines.append('Clean einmalig: %.2f € (Spanne %.0f–%.0f €)' % (once, once * r[0], once * r[1]))
+    CLEAR_KEYS = ('clearMode', 'clearAreas', 'livingArea', 'livingFill', 'rooms', 'kellerArea', 'kellerFill', 'atticArea',
+                  'atticFill', 'garageArea', 'garageFill', 'officeArea', 'officeFill', 'disposeShare', 'newAddress',
+                  'newFloor', 'newElevator', 'distance', 'clearExtras')
+    ci = dict((k, s(k)) for k in CLEAR_KEYS if s(k)) if 'clear' in units_ids else {}
+    if ci is not None and 'clear' in units_ids and not s('clearAreas') and area:
+        # Request from the old form (one area, one fill level, distance to the disposal site).
+        ci = {'clearMode': 'dispose', 'clearAreas': 'living', 'livingArea': s('area'), 'livingFill': s('fillLevel') or 'normal'}
     if 'clear' in units_ids:
-        c = cfg.get('clear', {})
-        fill = c['fill'].get(s('fillLevel'), c['fill']['normal'])
-        vol = area * fill
-        base = vol * c['per_m3']
-        floors = max(0, floor - 1) if s('elevator') == 'no' else 0
-        base *= 1 + c['floor_pct'] * floors
-        km = max(0.0, dist - c['free_km']) * c['per_km']
-        total = max(c['min'], base + km)
-        lo += max(c['min'], total * c['range'][0]); hi += total * c['range'][1]
-        lines.append('Clear: %.1f m² × %.1f = %.1f m³ × %s € = %.2f €; Etagen-Zuschlag %d × %d %%; Anfahrt %.2f €; Summe %.2f € (Spanne %.0f–%.0f €)'
-                     % (area, fill, vol, c['per_m3'], vol * c['per_m3'], floors, c['floor_pct'] * 100, km, total,
-                        max(c['min'], total * c['range'][0]), total * c['range'][1]))
+        cc = cfg.get('clear', {})
+        cl_addr, cl_floor, cl_elev = s('address'), floor, s('elevator') == 'yes'
+        # ---- MOKA Clear calculation (same block in new_request.py and decision.py) ----
+        # Input: cc (pricing "clear"), ci (dict of form strings), cl_addr, cl_floor (int), cl_elev (bool).
+        cl_n = lambda k: float(str(ci.get(k) or '0').replace(',', '.') or 0)
+        cl_mode = ci.get('clearMode') or 'dispose'
+        cl_places = [x for x in (ci.get('clearAreas') or '').split(',') if x]
+        cl_extras = [x for x in (ci.get('clearExtras') or '').split(',') if x]
+        cl_up_old = max(0, cl_floor - 1) if not cl_elev else 0
+        cl_up_new = max(0, int(cl_n('newFloor')) - 1) if ci.get('newElevator') != 'yes' else 0
+        cl_raw, cl_adj, cl_parts = 0.0, 0.0, []
+        for cl_key, cl_label in [('living', 'Wohnräume'), ('keller', 'Keller'), ('attic', 'Dachboden'), ('garage', 'Garage'), ('office', 'Büro-/Gewerberäume')]:
+            if cl_key in cl_places:
+                cl_fill = cc['fill'].get(ci.get(cl_key + 'Fill'), cc['fill']['normal'])
+                cl_vol = cl_n(cl_key + 'Area') * cl_fill
+                cl_pct = cc['keller_pct'] if cl_key == 'keller' else (0 if cl_key == 'garage' else cc['floor_pct'] * cl_up_old)
+                cl_raw += cl_vol
+                cl_adj += cl_vol * (1 + cl_pct)
+                cl_parts.append('%s ca. %.0f m² × %s = %.1f m³%s%s' % (
+                    cl_label, cl_n(cl_key + 'Area'), cl_fill, cl_vol, ' (+%d %%)' % round(cl_pct * 100) if cl_pct else '',
+                    ', %d Zimmer' % cl_n('rooms') if cl_key == 'living' else ''))
+        cl_share = 1.0 if cl_mode == 'dispose' else (0.0 if cl_mode == 'move' else cl_n('disposeShare') or 0.5)
+        # Zone from the postcode of the property address: Berlin free, nearby Brandenburg flat fee, else manual.
+        cl_plz = ([t for t in cl_addr.replace(',', ' ').split() if len(t) == 5 and t.isdigit()] or [''])[0]
+        cl_zone = 'berlin' if cl_plz and '10000' <= cl_plz <= '14199' else ('umland' if cl_plz[:2] in ('14', '15', '16') else 'manuell')
+        cl_zone_fee = cc['zone'].get(cl_zone, 0) if cl_share else 0
+        cl_disp = cl_adj * cl_share * cc['per_m3']
+        cl_disp_total = cl_disp + cl_zone_fee if cl_share else 0.0
+        if cl_mode == 'dispose':
+            cl_disp_total = max(cc['min'], cl_disp_total)
+        mv = cc['move']
+        cl_handling = cl_adj * (1 - cl_share) / mv['m3_per_hour'] * (1 + cc['floor_pct'] * cl_up_new)
+        cl_handling *= 1 + (mv['montage_pct'] if 'montage' in cl_extras else 0) + (mv['packing_pct'] if 'packing' in cl_extras else 0)
+        cl_drive = cl_n('distance') / mv['kmh']
+        cl_hours = (max(mv['min_hours'], cl_handling + cl_drive) * 2 + 0.999) // 1 / 2 if cl_share < 1 else 0.0
+        cl_halte = len([x for x in ('haltverbotOld', 'haltverbotNew') if x in cl_extras]) if cl_share < 1 else 0
+        cl_move_total = cl_hours * mv['hourly'] + cl_halte * mv['halteverbot']
+        cl_notes = [l for x, l in [('heavy', 'schwere Gegenstände'), ('hazardous', 'Sondermüll'), ('noParking', 'kein Parkplatz vor dem Eingang')] if x in cl_extras]
+        MODE = {'dispose': 'Entsorgen', 'move': 'Umzug', 'mixed': 'Teils Umzug, teils Entsorgen'}
+        lines.append('Clear (%s): %s; gesamt %.1f m³' % (MODE.get(cl_mode, cl_mode), '; '.join(cl_parts) or 'keine Räume', cl_raw))
+        r = cc['range']
+        if cl_share:
+            lines.append('Entsorgen: %.1f m³ inkl. Zuschläge × %s €%s = %.2f €%s; Zone %s (PLZ %s)%s'
+                         % (cl_adj * cl_share, cc['per_m3'], ' + Umland %s €' % cl_zone_fee if cl_zone_fee else '', cl_disp_total,
+                            ' (Mindestpreis)' if cl_mode == 'dispose' and cl_disp_total == cc['min'] else '', cl_zone, cl_plz or '?',
+                            ', Anfahrt bitte manuell prüfen' if cl_zone == 'manuell' else ''))
+        if cl_share < 1:
+            lines.append('Umzug: %.1f Std. × %s € = %.2f €%s (Tragen %.1f Std. inkl. Etagen/Extras, Fahrt %.0f km ÷ %s km/h, mind. %s Std.)'
+                         % (cl_hours, mv['hourly'], cl_hours * mv['hourly'], ' + %d × Halteverbot %s €' % (cl_halte, mv['halteverbot']) if cl_halte else '',
+                            cl_handling, cl_n('distance'), mv['kmh'], mv['min_hours']))
+        if cl_notes:
+            lines.append('Hinweise Clear: %s' % ', '.join(cl_notes))
+        cl_total = cl_disp_total + cl_move_total
+        lo += max(cc['min'], cl_total * r[0]) if cl_mode == 'dispose' else cl_total * r[0]
+        hi += cl_total * r[1]
+        lines.append('Clear gesamt: %.2f € (Spanne %.0f–%.0f €)' % (cl_total, cl_total * r[0], cl_total * r[1]))
     if 'build' in units_ids:
         lines.append('Build: keine Schätzung, Besichtigung und manuelles Angebot')
     if 'verwaltung' in units_ids:
@@ -159,16 +210,17 @@ else:
         'x_moka_object_type': obj if obj in OBJECT else False,
         'x_moka_service_type': s('serviceType') if s('serviceType') in ('recurring', 'onetime') else False,
         'x_moka_units': units,
-        'x_moka_area': area,
+        'x_moka_area': area or sum(num(k + 'Area') for k in ('living', 'keller', 'attic', 'garage', 'office')),
         'x_moka_floor': floor,
         'x_moka_elevator': s('elevator') == 'yes',
         'x_moka_distance': dist,
-        'x_moka_fill_level': FILL.get(s('fillLevel'), False),
+        'x_moka_fill_level': FILL.get(s('fillLevel') or s('livingFill'), False),
         'x_moka_object_address': s('address'),
         'x_moka_estimate_min': lo,
         'x_moka_estimate_max': hi,
         'x_moka_estimate_details': '\n'.join(lines),
         'x_moka_clean_input': json.dumps(clean_in) if clean_in else False,
+        'x_moka_clear_input': json.dumps(ci) if ci else False,
         'x_moka_token': env.context.get('moka_token') or False,
     })
     lead.write({'x_moka_ref': 'A-%05d' % lead.id})
@@ -190,15 +242,21 @@ else:
         link = lambda a: '%s?lead=%d&t=%s&a=%s' % (url, lead.id, lead.x_moka_token, a)
         btn = lambda a, label, color: '<a href="%s" style="display:inline-block;margin:4px 6px 4px 0;padding:10px 16px;border-radius:6px;background:%s;color:#fff;text-decoration:none;font-weight:bold">%s</a>' % (link(a), color, label)
         esc = lambda t: str(t or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        general = any(u in units_ids for u in ('clear', 'build', 'verwaltung'))
+        general = any(u in units_ids for u in ('build', 'verwaltung'))
         rows = [
             ('Anfrage-Nr.', lead.x_moka_ref), ('Leistung', units_label), ('Bereiche', scope_label),
             ('Auftragsart', dict(recurring='Regelmäßig', onetime='Einmalig').get(s('serviceType'), '')),
             ('Objekt', OBJECT.get(obj, obj)), ('Objektadresse', s('address')), ('Rechnungsadresse', s('billingAddress') or 'wie Objektadresse'),
             ('Einheiten', s('units') if general or 'hausmeister' in clean_scope else ''),
-            ('Fläche', general and s('area') and '%s m²' % s('area')), ('Etage', general and s('floor')),
-            ('Fahrstuhl', general and s('elevator') and ('Ja' if s('elevator') == 'yes' else 'Nein')),
-            ('Entfernung', s('distance') and '%s km' % s('distance')), ('Füllgrad', s('fillLevel')),
+            ('Fläche', general and s('area') and '%s m²' % s('area')), ('Etage', (general or ci) and s('floor')),
+            ('Fahrstuhl', (general or ci) and s('elevator') and ('Ja' if s('elevator') == 'yes' else 'Nein')),
+            ('Clear', ci and '; '.join([dict(dispose='Entsorgen', move='Umzug', mixed='Teils Umzug, teils Entsorgen').get(s('clearMode'), '')] + cl_parts)),
+            ('Anteil Entsorgen', s('disposeShare') and '%d %%' % (float(s('disposeShare')) * 100)),
+            ('Neue Adresse', s('newAddress') and '%s, Etage %s, Fahrstuhl %s' % (s('newAddress'), s('newFloor'), 'ja' if s('newElevator') == 'yes' else 'nein')),
+            ('Entfernung', s('distance') and 'ca. %s km' % s('distance')),
+            ('Extras Clear', ci and ', '.join(dict(montage='Möbel ab-/aufbauen', packing='Einpacken', haltverbotOld='Halteverbot alte Adresse',
+                                                    haltverbotNew='Halteverbot neue Adresse', heavy='schwere Gegenstände', hazardous='Sondermüll',
+                                                    noParking='kein Parkplatz').get(x, x) for x in s('clearExtras').split(',') if x)),
             ('Treppenhäuser × Etagen', s('stairwells') and '%s × %s (%s)' % (s('stairwells'), s('storeys'), FREQ.get(s('stairFrequency'), ''))),
             ('Mülltonnen', s('bins')), ('Gehweg & Wege', s('sidewalk') and 'ca. %s m' % s('sidewalk')),
             ('Grünfläche', s('gardenArea') and 'ca. %s m²' % s('gardenArea')),

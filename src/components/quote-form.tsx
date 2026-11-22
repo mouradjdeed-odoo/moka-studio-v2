@@ -9,10 +9,9 @@ import {
   Brush,
   Building,
   Building2,
+  Camera,
+  Car,
   CalendarCheck,
-  PackageOpen,
-  Boxes,
-  Package,
   Cable,
   Check,
   CheckCircle2,
@@ -29,10 +28,13 @@ import {
   Repeat,
   Send,
   Snowflake,
+  Split,
   Sparkles,
   SprayCan,
   Trash2,
+  Triangle,
   Truck,
+  Warehouse,
   Wrench,
   X,
 } from 'lucide-react'
@@ -47,8 +49,19 @@ import {
   isObjectTypeOf,
   needsBuildScope,
   needsCleanScope,
-  needsDistance,
-  needsFillLevel,
+  needsClear,
+  needsFloor,
+  needsMove,
+  activeClearExtras,
+  clearExtrasFor,
+  clearModes,
+  clearPlaces,
+  disposeShares,
+  parseClearAreas,
+  placeArea,
+  placeFill,
+  type ClearMode,
+  type ClearPlace,
   needsGeneral,
   needsUnits,
   fillLevels,
@@ -98,7 +111,14 @@ const cleanScopeIcons: Record<CleanScope, typeof Sparkles> = {
   fenster: AppWindow,
   sonder: Brush,
 }
-const fillLevelIcons: Record<FillLevel, typeof Sparkles> = { low: PackageOpen, normal: Package, full: Boxes }
+const clearModeIcons: Record<ClearMode, typeof Sparkles> = { dispose: Trash2, move: Truck, mixed: Split }
+const clearPlaceIcons: Record<ClearPlace, typeof Sparkles> = {
+  living: Home,
+  keller: Warehouse,
+  attic: Triangle,
+  garage: Car,
+  office: Briefcase,
+}
 const buildScopeIcons: Record<BuildScope, typeof Sparkles> = {
   renovierung: Paintbrush,
   trockenbau: Layers,
@@ -121,7 +141,24 @@ const emptyData: QuoteData = {
   floor: '',
   elevator: '',
   distance: '',
-  fillLevel: '',
+  clearMode: '',
+  clearAreas: '',
+  livingArea: '',
+  livingFill: '',
+  rooms: '',
+  kellerArea: '',
+  kellerFill: '',
+  atticArea: '',
+  atticFill: '',
+  garageArea: '',
+  garageFill: '',
+  officeArea: '',
+  officeFill: '',
+  disposeShare: '',
+  newAddress: '',
+  newFloor: '',
+  newElevator: '',
+  clearExtras: '',
   stairwells: '',
   storeys: '',
   stairFrequency: '',
@@ -384,7 +421,7 @@ function ScopeGroup<T extends string>({
   labels,
   error,
 }: {
-  name: 'service' | 'cleanScope' | 'buildScope'
+  name: 'service' | 'cleanScope' | 'buildScope' | 'clearAreas'
   legend: string
   hint: string
   options: readonly T[]
@@ -564,6 +601,7 @@ export function QuoteForm() {
     const general = needsGeneral(data.service)
     const has = (c: CleanScope) => clean.includes(c)
     const pick = <K extends string>(labels: Record<K, string>, key: string) => labels[key as K] ?? ''
+    const fillLabels = Object.fromEntries(fillLevels.map((l) => [l, f.fillLevels[l].title])) as Record<FillLevel, string>
     const summary = [
       ...(reference ? [[f.reference, reference]] : []),
       [f.service, serviceName],
@@ -577,16 +615,34 @@ export function QuoteForm() {
       [f.address, data.address],
       ...(data.billingAddress.trim() ? [[f.billingAddress, data.billingAddress]] : []),
       ...(data.company.trim() ? [[f.company, data.company]] : []),
-      ...(general
+      ...(general ? [[f.area, `${data.area} ${f.areaUnit}`]] : []),
+      ...(needsFloor(data.service)
         ? [
-            [f.area, `${data.area} ${f.areaUnit}`],
             [f.floor, data.floor],
             [f.elevator, data.elevator === 'yes' ? f.yes : f.no],
           ]
         : []),
-      ...(needsDistance(data.service) ? [[f.distance, `${data.distance} ${f.distanceUnit}`]] : []),
-      ...(needsFillLevel(data.service)
-        ? [[f.fillLevel, f.fillLevels[data.fillLevel as FillLevel]?.title]]
+      ...(needsClear(data.service)
+        ? [
+            [f.clearMode, pick(Object.fromEntries(clearModes.map((m) => [m, f.clearModes[m].title])), data.clearMode)],
+            ...parseClearAreas(data.clearAreas).map((place) => [
+              f.clearPlaces[place].title,
+              `${data[placeArea[place]]} ${f.areaUnit}, ${pick(fillLabels, data[placeFill[place]])}` +
+                (place === 'living' ? `, ${data.rooms} ${f.rooms}` : ''),
+            ]),
+            ...(data.clearMode === 'mixed' ? [[f.disposeShare, pick(f.disposeShares, data.disposeShare)]] : []),
+            ...(needsMove(data)
+              ? [
+                  [f.newAddress, data.newAddress],
+                  [f.newFloor, data.newFloor],
+                  [f.newElevator, data.newElevator === 'yes' ? f.yes : f.no],
+                  [f.distance, `${data.distance} ${f.distanceUnit}`],
+                ]
+              : []),
+            ...(activeClearExtras(data).length
+              ? [[f.clearExtras, activeClearExtras(data).map((x) => f.clearExtraLabels[x]).join(', ')]]
+              : []),
+          ]
         : []),
       ...(has('treppenhaus')
         ? [
@@ -642,6 +698,8 @@ export function QuoteForm() {
     services.map((s) => [s.id, { title: s.name, subtitle: t.services.items[s.id].tagline }]),
   ) as Record<ServiceId, { title: string; subtitle: string }>
   const cleanNow = activeCleanScope(data)
+  const clearAreasNow = parseClearAreas(data.clearAreas)
+  const fillLabels = Object.fromEntries(fillLevels.map((l) => [l, f.fillLevels[l].title])) as Record<FillLevel, string>
   const progress = ((step + 1) / totalSteps) * 100
   const stepTitle = [f.step1Title, f.step2Title, f.step3Title][step]
 
@@ -851,17 +909,20 @@ export function QuoteForm() {
             )}
 
             {needsGeneral(data.service) && (
+              <NumberField
+                id="area"
+                label={f.area}
+                value={data.area}
+                onChange={(v) => update('area', v)}
+                unit={f.areaUnit}
+                min={1}
+                max={100000}
+                error={err('area')}
+              />
+            )}
+
+            {needsFloor(data.service) && (
               <>
-                <NumberField
-                  id="area"
-                  label={f.area}
-                  value={data.area}
-                  onChange={(v) => update('area', v)}
-                  unit={f.areaUnit}
-                  min={1}
-                  max={100000}
-                  error={err('area')}
-                />
                 <NumberField
                   id="floor"
                   label={f.floor}
@@ -870,7 +931,7 @@ export function QuoteForm() {
                   min={-2}
                   max={99}
                   step={1}
-                  hint={f.floorHint}
+                  hint={needsMove(data) ? `${f.floorHint} · ${f.floorMoveHint}` : f.floorHint}
                   error={err('floor')}
                 />
                 <PillGroup
@@ -885,44 +946,182 @@ export function QuoteForm() {
               </>
             )}
 
-            {needsDistance(data.service) && (
-              <div className="sm:col-span-2 sm:max-w-xs animate-in fade-in duration-300">
-                <NumberField
-                  id="distance"
-                  label={f.distance}
-                  value={data.distance}
-                  onChange={(v) => update('distance', v)}
-                  unit={f.distanceUnit}
-                  min={0}
-                  max={1000}
-                  hint={f.distanceHint}
-                  error={err('distance')}
-                />
-              </div>
-            )}
+            {needsClear(data.service) && (
+              <div className="grid gap-5 border-t pt-5 sm:col-span-2 sm:grid-cols-2 animate-in fade-in duration-300">
+                <h4 className="text-base font-semibold text-primary sm:col-span-2">{f.clearDetails}</h4>
+                <fieldset className="sm:col-span-2" aria-describedby={described('clearMode')}>
+                  <legend className="mb-3 text-sm font-medium text-foreground">
+                    {f.clearMode} <span className="text-destructive">*</span>
+                  </legend>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {clearModes.map((mode) => (
+                      <ChoiceCard
+                        key={mode}
+                        name="clearMode"
+                        value={mode}
+                        checked={data.clearMode === mode}
+                        onChange={(v) => update('clearMode', v)}
+                        icon={clearModeIcons[mode]}
+                        title={f.clearModes[mode].title}
+                        subtitle={f.clearModes[mode].subtitle}
+                        invalid={!!errors.clearMode}
+                      />
+                    ))}
+                  </div>
+                  <FieldError id="clearMode-error" message={err('clearMode')} />
+                </fieldset>
 
-            {needsFillLevel(data.service) && (
-              <fieldset className="sm:col-span-2 animate-in fade-in duration-300" aria-describedby={described('fillLevel')}>
-                <legend className="mb-3 text-sm font-medium text-foreground">
-                  {f.fillLevel} <span className="text-destructive">*</span>
-                </legend>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {fillLevels.map((level) => (
-                    <ChoiceCard
-                      key={level}
-                      name="fillLevel"
-                      value={level}
-                      checked={data.fillLevel === level}
-                      onChange={(v) => update('fillLevel', v)}
-                      icon={fillLevelIcons[level]}
-                      title={f.fillLevels[level].title}
-                      subtitle={f.fillLevels[level].subtitle}
-                      invalid={!!errors.fillLevel}
-                    />
-                  ))}
+                <div className="sm:col-span-2">
+                  <ScopeGroup
+                    name="clearAreas"
+                    legend={f.clearAreas}
+                    hint={f.cleanScopeHint}
+                    options={clearPlaces}
+                    selected={clearAreasNow}
+                    onChange={(v) => update('clearAreas', v)}
+                    icons={clearPlaceIcons}
+                    labels={f.clearPlaces}
+                    error={err('clearAreas')}
+                  />
                 </div>
-                <FieldError id="fillLevel-error" message={err('fillLevel')} />
-              </fieldset>
+
+                {clearAreasNow.map((place) => (
+                  <div key={place} className="grid gap-4 rounded-lg border bg-secondary/30 p-4 sm:col-span-2 sm:grid-cols-2">
+                    <p className="font-semibold text-primary sm:col-span-2">{f.clearPlaces[place].title}</p>
+                    <NumberField
+                      id={placeArea[place]}
+                      label={f.placeArea}
+                      value={data[placeArea[place]]}
+                      onChange={(v) => update(placeArea[place], v)}
+                      unit={f.areaUnit}
+                      min={1}
+                      max={100000}
+                      hint={f.approxHint}
+                      error={err(placeArea[place])}
+                    />
+                    {place === 'living' && (
+                      <NumberField
+                        id="rooms"
+                        label={f.rooms}
+                        value={data.rooms}
+                        onChange={(v) => update('rooms', v)}
+                        min={1}
+                        max={50}
+                        step={1}
+                        error={err('rooms')}
+                      />
+                    )}
+                    <PillGroup
+                      name={placeFill[place]}
+                      legend={f.placeFill}
+                      options={fillLevels}
+                      labels={fillLabels}
+                      value={data[placeFill[place]]}
+                      onChange={(v) => update(placeFill[place], v)}
+                      error={err(placeFill[place])}
+                    />
+                  </div>
+                ))}
+
+                {data.clearMode === 'mixed' && (
+                  <PillGroup
+                    name="disposeShare"
+                    legend={f.disposeShare}
+                    options={disposeShares}
+                    labels={f.disposeShares}
+                    value={data.disposeShare}
+                    onChange={(v) => update('disposeShare', v)}
+                    error={err('disposeShare')}
+                  />
+                )}
+
+                {needsMove(data) && (
+                  <>
+                    <div className="sm:col-span-2">
+                      <Label htmlFor="newAddress">{f.newAddress}</Label>
+                      <input
+                        id="newAddress"
+                        value={data.newAddress}
+                        onChange={(e) => update('newAddress', e.target.value)}
+                        autoComplete="off"
+                        placeholder={f.addressPlaceholder}
+                        maxLength={200}
+                        aria-invalid={!!errors.newAddress}
+                        aria-describedby={described('newAddress')}
+                        className={inputClass}
+                      />
+                      <FieldError id="newAddress-error" message={err('newAddress')} />
+                    </div>
+                    <NumberField
+                      id="newFloor"
+                      label={f.newFloor}
+                      value={data.newFloor}
+                      onChange={(v) => update('newFloor', v)}
+                      min={-2}
+                      max={99}
+                      step={1}
+                      hint={f.floorHint}
+                      error={err('newFloor')}
+                    />
+                    <NumberField
+                      id="distance"
+                      label={f.distance}
+                      value={data.distance}
+                      onChange={(v) => update('distance', v)}
+                      unit={f.distanceUnit}
+                      min={0}
+                      max={1000}
+                      hint={f.distanceHint}
+                      error={err('distance')}
+                    />
+                    <PillGroup
+                      name="newElevator"
+                      legend={f.newElevator}
+                      options={['yes', 'no'] as const}
+                      labels={{ yes: f.yes, no: f.no }}
+                      value={data.newElevator}
+                      onChange={(v) => update('newElevator', v)}
+                      error={err('newElevator')}
+                    />
+                  </>
+                )}
+
+                {clearExtrasFor(data.clearMode).length > 0 && (
+                  <fieldset className="sm:col-span-2">
+                    <legend className="mb-3 flex items-baseline gap-2 text-sm font-medium text-foreground">
+                      {f.clearExtras}
+                      <span className="text-xs font-normal text-muted-foreground">({f.optional})</span>
+                    </legend>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {clearExtrasFor(data.clearMode).map((extra) => {
+                        const picked = activeClearExtras(data)
+                        const checked = picked.includes(extra)
+                        return (
+                          <label key={extra} className="flex items-start gap-3 text-sm text-primary">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                update(
+                                  'clearExtras',
+                                  (checked ? picked.filter((x) => x !== extra) : [...picked, extra]).join(','),
+                                )
+                              }
+                              className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+                            />
+                            {f.clearExtraLabels[extra]}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </fieldset>
+                )}
+
+                <p className="flex items-start gap-2 text-sm text-muted-foreground sm:col-span-2">
+                  <Camera className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  {f.photoHint}
+                </p>
+              </div>
             )}
 
             {cleanNow.length > 0 && (

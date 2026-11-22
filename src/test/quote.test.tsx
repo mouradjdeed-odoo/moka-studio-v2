@@ -3,7 +3,10 @@ import { validateStep, toPayload, MAX_FILES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, type
 
 const base: QuoteData = {
   service: "clear", objectScope: "unit", objectType: "wohnung", cleanScope: "", buildScope: "", serviceType: "onetime",
-  units: "1", area: "50", floor: "0", elevator: "no", distance: "", fillLevel: "",
+  units: "1", area: "50", floor: "0", elevator: "no", distance: "",
+  clearMode: "dispose", clearAreas: "living", livingArea: "50", livingFill: "normal", rooms: "2", kellerArea: "", kellerFill: "",
+  atticArea: "", atticFill: "", garageArea: "", garageFill: "", officeArea: "", officeFill: "", disposeShare: "",
+  newAddress: "", newFloor: "", newElevator: "", clearExtras: "",
   stairwells: "", storeys: "", stairFrequency: "", bins: "", sidewalk: "", gardenArea: "", interiorArea: "",
   interiorFrequency: "", windows: "", glassArea: "", windowFrequency: "",
   name: "Max", company: "", address: "Musterstr. 1", billingAddress: "", email: "a@b.de", phone: "", notes: "Bitte Angebot",
@@ -12,16 +15,29 @@ const base: QuoteData = {
 const building: QuoteData = { ...base, service: "clean", objectScope: "building", objectType: "mfh", serviceType: "", units: "", area: "", floor: "", elevator: "" };
 
 describe("quote rules", () => {
-  it("requires distance for MOKA Clear", () => {
-    expect(validateStep(1, base, []).distance).toBe("distance");
+  it("accepts a complete MOKA Clear disposal without distance or job type", () => {
+    expect(validateStep(1, { ...base, serviceType: "", distance: "" }, [])).toEqual({});
   });
-  it("requires a fill level for MOKA Clear", () => {
-    expect(validateStep(1, base, []).fillLevel).toBe("fillLevel");
-    expect(validateStep(1, { ...base, fillLevel: "voll" }, []).fillLevel).toBe("fillLevel");
-    expect(validateStep(1, { ...base, fillLevel: "full" }, []).fillLevel).toBeUndefined();
+  it("asks area and fill level per chosen place", () => {
+    const e = validateStep(1, { ...base, clearAreas: "living,keller", livingFill: "voll" }, []);
+    expect(e.livingFill).toBe("livingFill");
+    expect(e.kellerArea).toBe("kellerArea");
+    expect(e.kellerFill).toBe("kellerFill");
+    expect(validateStep(1, { ...base, clearAreas: "" }, []).clearAreas).toBe("clearAreas");
+    expect(validateStep(1, { ...base, rooms: "" }, []).rooms).toBe("rooms");
   });
-  it("does not ask for a fill level without MOKA Clear", () => {
-    expect(validateStep(1, { ...base, service: "clean" }, []).fillLevel).toBeUndefined();
+  it("asks the new address, its floor, elevator and distance for a move", () => {
+    const e = validateStep(1, { ...base, clearMode: "move" }, []);
+    expect(Object.keys(e).sort()).toEqual(["distance", "newAddress", "newElevator", "newFloor"]);
+    expect(validateStep(1, { ...base, clearMode: "mixed", newAddress: "Neue Str. 2, 10115 Berlin", newFloor: "1", newElevator: "yes", distance: "8" }, []).disposeShare).toBe("disposeShare");
+  });
+  it("sends only the extras offered for the chosen mode", () => {
+    expect(toPayload({ ...base, clearExtras: "heavy,montage,noParking" }).clearExtras).toBe("heavy,noParking");
+    expect(toPayload({ ...base, clearMode: "move", clearExtras: "heavy,montage,noParking" }).clearExtras).toBe("heavy,montage");
+    expect(toPayload({ ...base, serviceType: "" }).serviceType).toBe("onetime");
+  });
+  it("does not ask Clear details without MOKA Clear", () => {
+    expect(validateStep(1, { ...base, service: "clean", clearMode: "", clearAreas: "" }, []).clearMode).toBeUndefined();
   });
   it("accepts several business units in one request", () => {
     expect(validateStep(0, { ...base, service: "clean,clear,build", cleanScope: "innen", buildScope: "renovierung" }, [])).toEqual({});

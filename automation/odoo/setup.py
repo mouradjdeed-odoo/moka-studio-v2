@@ -33,8 +33,11 @@ PRICING = {
     'clean': {'treppenhaus': {'base': 60, 'per_unit': 10}, 'muell': {'base': 40, 'per_unit': 2},
               'hausmeister': {'per_m2': 0.25, 'min': 100}, 'winter': {'base': 250, 'per_unit': 10, 'months': 5},
               'hourly': 40, 'range': [0.9, 1.2]},
-    'clear': {'per_m3': 40, 'fill': {'low': 0.3, 'normal': 0.5, 'full': 0.8}, 'floor_pct': 0.05,
-              'free_km': 20, 'per_km': 2, 'min': 290, 'range': [0.8, 1.3]},
+    # Clear model v2 (2026-11-22), see migrate_clear_v2.py.
+    'clear': {'per_m3': 40, 'fill': {'low': 0.3, 'normal': 0.5, 'full': 0.8}, 'floor_pct': 0.05, 'keller_pct': 0.10,
+              'min': 290, 'zone': {'berlin': 0, 'umland': 50, 'manuell': 0}, 'range': [0.8, 1.3],
+              'move': {'hourly': 120, 'm3_per_hour': 4, 'kmh': 25, 'min_hours': 3, 'montage_pct': 0.2,
+                       'packing_pct': 0.25, 'halteverbot': 120}},
 }
 DEFAULT_PARAMS = {'moka.pricing': json.dumps(PRICING), 'moka.notify_emails': os.environ.get('MOKA_NOTIFY', ''),
                   'moka.decision_url': os.environ.get('MOKA_DECISION_URL', '')}
