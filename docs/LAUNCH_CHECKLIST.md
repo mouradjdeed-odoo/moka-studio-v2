@@ -3,8 +3,8 @@
 Stand: 17.11.2026. ✅ erledigt · ⏳ offen · 🔴 Pflicht vor dem Livegang
 
 ## A. Rechtliches (Pflicht)
-- 🔴 Impressum-Seite auf der Website fehlt noch (Footer-Links sind Platzhalter). Daten: MoKa Service UG (haftungsbeschränkt), Sitz Berlin, Amtsgericht Charlottenburg HRB 286570 B, Geschäftsführer Kamel Fehmi Allam ✅; USt-IdNr./Steuernummer ⏳.
-- 🔴 Datenschutzerklärung: Hosting IONOS, Formular → Make (EU) → Odoo, E-Mail-Versand, Rechte der Betroffenen, Speicherdauer.
+- ✅ Impressum-Seite `/impressum` (24.11.2026): MoKa Service UG (haftungsbeschränkt), Amtsgericht Charlottenburg HRB 286570 B, Geschäftsführer Kamel Fehmi Allam. ⏳ USt-IdNr. ergänzen, sobald vorhanden.
+- ✅ Datenschutzerklärung `/datenschutz` veröffentlicht (Text aus `docs/legal/Datenschutz.md`). 🔴 Sie nennt AV-Verträge mit IONOS, Make und Odoo als abgeschlossen: vor dem Livegang tatsächlich abschließen.
 - 🔴 AV-Verträge (Auftragsverarbeitung) mit IONOS, Make und Odoo abschließen; Odoo-Rechenzentrum (EU) prüfen.
 - 🔴 AGB und Rahmenvertrag (`docs/legal/`) anwaltlich prüfen; danach `moka.contract_active = 1` in Odoo.
 - ✅ Firmenname „MoKa Service UG (haftungsbeschränkt)“ und HRB in E-Mail-Fußzeile, AGB, Rahmenvertrag, Datenschutz und Odoo (24.11.2026). 🔴 Noch offen: Pflichtangaben in geschäftlichen E-Mails und auf Angeboten/Rechnungen (Registergericht, HRB, Geschäftsführer, USt-IdNr., Bankverbindung).

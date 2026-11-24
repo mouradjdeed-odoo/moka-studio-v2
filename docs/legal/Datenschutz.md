@@ -1,6 +1,6 @@
 # Datenschutzerklärung
 
-> **ENTWURF, Stand 17.11.2026. Vor Veröffentlichung rechtlich prüfen lassen. Platzhalter in [eckigen Klammern] ergänzen.**
+> **Stand 24.11.2026. Veröffentlicht unter /datenschutz (`src/routes/datenschutz.tsx`, beide synchron halten). Anwaltliche Prüfung empfohlen.**
 
 ## 1. Verantwortlicher
 MoKa Service UG (haftungsbeschränkt), Lietzenburger Straße 29, 10789 Berlin
@@ -34,7 +34,7 @@ Ein Datenschutzbeauftragter ist nicht bestellt, da die gesetzlichen Voraussetzun
 Angebote stellen wir Ihnen über ein Kundenportal in Odoo bereit. Wenn Sie ein Angebot oder einen Vertrag online unterschreiben, speichern wir Ihre Unterschrift, Name, Datum, Uhrzeit und IP-Adresse als Nachweis des Vertragsschlusses (Art. 6 Abs. 1 lit. b und lit. f DSGVO).
 
 ## 5. Speicherdauer
-- Abgelehnte oder nicht zustande gekommene Anfragen löschen wir spätestens [180 Tage] nach Abschluss automatisch, einschließlich der hochgeladenen Dateien.
+- Abgelehnte oder nicht zustande gekommene Anfragen löschen wir spätestens 180 Tage nach Abschluss automatisch, einschließlich der hochgeladenen Dateien.
 - Daten zu Angeboten, Aufträgen und Rechnungen bewahren wir entsprechend den gesetzlichen Aufbewahrungsfristen auf (bis zu 10 Jahre nach § 147 AO und § 257 HGB) und löschen sie danach.
 
 ## 6. Ihre Rechte
