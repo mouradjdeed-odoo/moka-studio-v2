@@ -1,4 +1,4 @@
-# Leistungskatalog Moka Service UG
+# Leistungskatalog MoKa Service UG (haftungsbeschränkt)
 
 > Offizielle Übersicht der Leistungen, vom Inhaber übermittelt am 2026-11-17.
 > Grundlage für Website-Texte, Formularoptionen und Odoo-Produkte.

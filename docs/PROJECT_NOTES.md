@@ -135,7 +135,7 @@ MOKA Verwaltung — **النموذج 2 (2026-11-22، وافق عليه المس�
 - أسباب الرفض: Außerhalb des Einsatzgebiets (1)، Keine Kapazität (2)، Leistung nicht im Angebot (3)، Sonstiges (4).
 - 16 خدمة في فئات MOKA Clean / Clear / Build / Verwaltung / Allgemein. خدمات Clean الدورية وVerwaltung اشتراكات شهرية، ومعظم الخدمات تُنشئ Project & Task عند التأكيد. الأسعار الصفرية تنتظر صاحب العمل، والقيم التقريبية في الملاحظات الداخلية لكل منتج.
 - حقول مخصصة في الفرصة (`x_moka_*`): الخدمات، النطاق، نوع العقار، نوع الخدمة، الوحدات، المساحة، الطابق، المصعد، المسافة، درجة الامتلاء، عنوان العقار، التقدير من/إلى، وتفاصيل الحساب. تظهر في تبويب "Anfrage-Details".
-- بيانات الشركة الرسمية: Moka Service UG، المدير Kamel Allam، Lietzenburger Straße 29, 10789 Berlin، الهاتف +49 163 6666614 (مُدخلة في Odoo وفي `src/lib/site.ts`).
+- بيانات الشركة الرسمية (حسب السجل التجاري، 11.11.2026): **MoKa Service UG (haftungsbeschränkt)**، Amtsgericht Charlottenburg، HRB 286570 B، المدير Kamel Fehmi Allam (منفرد الصلاحية)، Lietzenburger Straße 29, 10789 Berlin، الهاتف +49 163 6666614 (مُدخلة في Odoo وفي `src/lib/site.ts`).
 - لم يُضبط بعد: الرقم الضريبي، والسجل التجاري، والدومين.
 - كتالوج الخدمات الرسمي: `docs/SERVICES.md`.
 

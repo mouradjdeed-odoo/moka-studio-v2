@@ -2,7 +2,7 @@
 
 > **ENTWURF, Stand 17.11.2026. Vor Verwendung durch eine Rechtsanwältin/einen Rechtsanwalt prüfen lassen.**
 
-**Moka Service UG (haftungsbeschränkt)**, Lietzenburger Straße 29, 10789 Berlin (im Folgenden „MOKA“)
+**MoKa Service UG (haftungsbeschränkt)**, Lietzenburger Straße 29, 10789 Berlin, eingetragen im Handelsregister des Amtsgerichts Charlottenburg unter HRB 286570 B, vertreten durch den Geschäftsführer Kamel Fehmi Allam (im Folgenden „MOKA“)
 
 ## § 1 Geltungsbereich
 1. Diese AGB gelten für alle Verträge über Leistungen von MOKA (Reinigung, Hausmeisterservice, Außenanlagenpflege, Entrümpelung und Entsorgung, Renovierung und Sanierung, Glasfaser- und Infrastrukturarbeiten sowie Immobilienbetreuung).
@@ -45,7 +45,7 @@ Verbraucher haben bei Verträgen, die ausschließlich über Fernkommunikationsmi
 ### Widerrufsbelehrung
 **Widerrufsrecht:** Sie haben das Recht, binnen vierzehn Tagen ohne Angabe von Gründen diesen Vertrag zu widerrufen. Die Widerrufsfrist beträgt vierzehn Tage ab dem Tag des Vertragsabschlusses.
 
-Um Ihr Widerrufsrecht auszuüben, müssen Sie uns (Moka Service UG (haftungsbeschränkt), Lietzenburger Straße 29, 10789 Berlin, Telefon +49 163 6666614, E-Mail info@moka-objektservice.de) mittels einer eindeutigen Erklärung (z. B. ein mit der Post versandter Brief oder eine E-Mail) über Ihren Entschluss, diesen Vertrag zu widerrufen, informieren. Sie können dafür das beigefügte Muster-Widerrufsformular verwenden, das jedoch nicht vorgeschrieben ist. Zur Wahrung der Widerrufsfrist reicht es aus, dass Sie die Mitteilung über die Ausübung des Widerrufsrechts vor Ablauf der Widerrufsfrist absenden.
+Um Ihr Widerrufsrecht auszuüben, müssen Sie uns (MoKa Service UG (haftungsbeschränkt), Lietzenburger Straße 29, 10789 Berlin, Telefon +49 163 6666614, E-Mail info@moka-objektservice.de) mittels einer eindeutigen Erklärung (z. B. ein mit der Post versandter Brief oder eine E-Mail) über Ihren Entschluss, diesen Vertrag zu widerrufen, informieren. Sie können dafür das beigefügte Muster-Widerrufsformular verwenden, das jedoch nicht vorgeschrieben ist. Zur Wahrung der Widerrufsfrist reicht es aus, dass Sie die Mitteilung über die Ausübung des Widerrufsrechts vor Ablauf der Widerrufsfrist absenden.
 
 **Folgen des Widerrufs:** Wenn Sie diesen Vertrag widerrufen, haben wir Ihnen alle Zahlungen, die wir von Ihnen erhalten haben, unverzüglich und spätestens binnen vierzehn Tagen ab dem Tag zurückzuzahlen, an dem die Mitteilung über Ihren Widerruf dieses Vertrags bei uns eingegangen ist. Für diese Rückzahlung verwenden wir dasselbe Zahlungsmittel, das Sie bei der ursprünglichen Transaktion eingesetzt haben, es sei denn, mit Ihnen wurde ausdrücklich etwas anderes vereinbart; in keinem Fall werden Ihnen wegen dieser Rückzahlung Entgelte berechnet.
 
@@ -56,7 +56,7 @@ Haben Sie verlangt, dass die Dienstleistungen während der Widerrufsfrist beginn
 ### Muster-Widerrufsformular
 (Wenn Sie den Vertrag widerrufen wollen, dann füllen Sie bitte dieses Formular aus und senden Sie es zurück.)
 
-An Moka Service UG (haftungsbeschränkt), Lietzenburger Straße 29, 10789 Berlin, info@moka-objektservice.de:
+An MoKa Service UG (haftungsbeschränkt), Lietzenburger Straße 29, 10789 Berlin, info@moka-objektservice.de:
 Hiermit widerrufe(n) ich/wir (*) den von mir/uns (*) abgeschlossenen Vertrag über die Erbringung der folgenden Dienstleistung (*): ___ / Bestellt am (*): ___ / Name des/der Verbraucher(s): ___ / Anschrift des/der Verbraucher(s): ___ / Unterschrift des/der Verbraucher(s) (nur bei Mitteilung auf Papier) / Datum
 (*) Unzutreffendes streichen.
 

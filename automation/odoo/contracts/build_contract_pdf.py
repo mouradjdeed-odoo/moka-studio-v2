@@ -76,12 +76,12 @@ def build(md_path, out_path, logo=None):
             w = 48 * mm
             c.drawImage(img, W - 20 * mm - w, H - 8 * mm - w * ih / iw, width=w, height=w * ih / iw)
         c.setFont('Helvetica', 8)
-        c.drawString(20 * mm, 12 * mm, 'Moka Service UG (haftungsbeschränkt) · Lietzenburger Straße 29 · 10789 Berlin · info@moka-objektservice.de')
+        c.drawString(20 * mm, 12 * mm, 'MoKa Service UG (haftungsbeschränkt) · Lietzenburger Straße 29 · 10789 Berlin · AG Charlottenburg HRB 286570 B · info@moka-objektservice.de')
         c.drawRightString(W - 20 * mm, 12 * mm, f'Seite {doc.page}')
 
     SimpleDocTemplate(out_path, pagesize=A4, leftMargin=20 * mm, rightMargin=20 * mm, topMargin=(42 if logo else 20) * mm,
                       bottomMargin=22 * mm, title='Rahmenvertrag MOKA Objektservice',
-                      author='Moka Service UG').build(story, onFirstPage=footer, onLaterPages=footer)
+                      author='MoKa Service UG (haftungsbeschränkt)').build(story, onFirstPage=footer, onLaterPages=footer)
     return POSITIONS
 
 

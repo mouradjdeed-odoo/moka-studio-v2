@@ -1,8 +1,11 @@
 export const site = {
   name: 'MOKA Objektservice',
   /** Legal entity, for Impressum and Datenschutz. */
-  legalName: 'Moka Service UG',
-  managingDirector: 'Kamel Allam',
+  legalName: 'MoKa Service UG (haftungsbeschränkt)',
+  managingDirector: 'Kamel Fehmi Allam',
+  /** Handelsregister (registered 11.11.2026). */
+  registerCourt: 'Amtsgericht Charlottenburg',
+  registerNumber: 'HRB 286570 B',
   phoneDisplay: '+49 163 6666614',
   phoneHref: 'tel:+491636666614',
   /** TODO: placeholder until the domain is decided (open decision 11). */
