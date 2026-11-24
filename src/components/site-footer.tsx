@@ -23,7 +23,7 @@ export function SiteFooter() {
           <ul className="mt-4 flex flex-col gap-2 text-sm text-white/60">
             {services.map((s) => (
               <li key={s.id}>
-                <a href="#leistungen" className="hover:text-white" dir="ltr">
+                <a href="/#leistungen" className="hover:text-white" dir="ltr">
                   {s.name}
                 </a>
               </li>
@@ -58,12 +58,12 @@ export function SiteFooter() {
           </p>
           <ul className="flex gap-6">
             <li>
-              <a id="impressum" href="#impressum" className="hover:text-white">
+              <a href="/impressum" className="hover:text-white">
                 {f.imprint}
               </a>
             </li>
             <li>
-              <a id="datenschutz" href="#datenschutz" className="hover:text-white">
+              <a href="/datenschutz" className="hover:text-white">
                 {f.privacy}
               </a>
             </li>
