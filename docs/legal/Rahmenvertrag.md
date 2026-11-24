@@ -2,7 +2,7 @@
 
 > **ENTWURF, Stand 17.11.2026. Vor Verwendung durch eine Rechtsanwältin/einen Rechtsanwalt prüfen lassen.**
 
-zwischen **Moka Service UG (haftungsbeschränkt)**, Lietzenburger Straße 29, 10789 Berlin, vertreten durch den Geschäftsführer Kamel Allam (nachfolgend „Auftragnehmer“)
+zwischen **MoKa Service UG (haftungsbeschränkt)**, Lietzenburger Straße 29, 10789 Berlin, eingetragen beim Amtsgericht Charlottenburg unter HRB 286570 B, vertreten durch den Geschäftsführer Kamel Fehmi Allam (nachfolgend „Auftragnehmer“)
 
 und dem unten unterzeichnenden **Auftraggeber**.
 

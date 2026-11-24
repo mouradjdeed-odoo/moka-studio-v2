@@ -2,8 +2,8 @@
 
 > **Internes Dokument, nicht veröffentlichen. ENTWURF, Stand 17.11.2026. Bei Änderungen der Abläufe aktualisieren.**
 
-**Verantwortlicher:** Moka Service UG (haftungsbeschränkt), Lietzenburger Straße 29, 10789 Berlin
-**Vertreten durch:** Kamel Allam (Geschäftsführer) · **Datenschutz-Kontakt:** info@moka-objektservice.de
+**Verantwortlicher:** MoKa Service UG (haftungsbeschränkt), Lietzenburger Straße 29, 10789 Berlin (Amtsgericht Charlottenburg, HRB 286570 B)
+**Vertreten durch:** Kamel Fehmi Allam (Geschäftsführer) · **Datenschutz-Kontakt:** info@moka-objektservice.de
 **Datenschutzbeauftragter:** nicht bestellt (weniger als 20 Personen mit ständiger Datenverarbeitung, § 38 BDSG)
 
 ## 1. Anfragen und Angebote
