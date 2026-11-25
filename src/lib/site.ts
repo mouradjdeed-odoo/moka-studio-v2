@@ -18,6 +18,13 @@ export const site = {
   city: '10789 Berlin',
 }
 
+export type SocialNetwork = 'facebook' | 'instagram' | 'linkedin' | 'youtube'
+
+/** Round icons in the footer. Add a network here only once its account exists. */
+export const socialLinks: readonly { network: SocialNetwork; label: string; url: string }[] = [
+  { network: 'facebook', label: 'Facebook', url: site.facebook },
+]
+
 export const FEATURE_ROTATION_MS = 4000
 
 type SubServiceConfig = {

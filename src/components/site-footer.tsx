@@ -1,8 +1,8 @@
 'use client'
 
-import { Facebook } from 'lucide-react'
 import { services, site } from '@/lib/site'
 import { Logo } from '@/components/logo'
+import { SocialLinks } from '@/components/social-links'
 import { useI18n } from '@/lib/i18n/provider'
 
 export function SiteFooter() {
@@ -48,19 +48,8 @@ export function SiteFooter() {
                 {site.email}
               </a>
             </li>
-            <li>
-              {/* Plain link only (no Facebook plugin): no data goes to Meta until the visitor clicks. */}
-              <a
-                href={site.facebook}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 hover:text-white"
-              >
-                <Facebook className="h-4 w-4" aria-hidden="true" />
-                Facebook
-              </a>
-            </li>
           </ul>
+          <SocialLinks className="mt-6" />
         </address>
       </div>
 
