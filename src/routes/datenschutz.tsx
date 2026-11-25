@@ -101,7 +101,50 @@ function Datenschutz() {
         </p>
       </Section>
 
-      <Section title="5. Speicherdauer">
+      <Section title="5. Unsere Facebook-Seite">
+        <p>
+          Wir betreiben eine Unternehmensseite auf{' '}
+          <a href={site.facebook} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+            Facebook
+          </a>{' '}
+          (Anbieter: Meta Platforms Ireland Limited, Merrion Road, Dublin 4, D04 X2K5, Irland). Auf dieser Website ist
+          Facebook nur als einfacher Link eingebunden: Beim Aufruf unserer Website werden keine Daten an Meta
+          übertragen. Erst wenn Sie den Link anklicken, gelangen Sie zu Facebook.
+        </p>
+        <p>
+          Wenn Sie unsere Facebook-Seite besuchen, verarbeitet Meta Ihre Daten (zum Beispiel IP-Adresse, Geräte- und
+          Nutzungsdaten, Cookies) nach eigenen Bedingungen, auch in den USA. Für die Seitenstatistiken („Insights“)
+          sind wir mit Meta gemeinsam verantwortlich (Art. 26 DSGVO). Meta übernimmt nach der{' '}
+          <a
+            href="https://www.facebook.com/legal/terms/page_controller_addendum"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2"
+          >
+            Vereinbarung über die gemeinsame Verantwortlichkeit
+          </a>{' '}
+          die primäre Verantwortung für diese Verarbeitung und für die Erfüllung Ihrer Rechte; Sie können sich aber
+          auch an uns wenden. Wir erhalten nur zusammengefasste Statistiken, die keinen Rückschluss auf einzelne
+          Personen zulassen.
+        </p>
+        <p>
+          Rechtsgrundlage ist unser berechtigtes Interesse, unser Unternehmen darzustellen und mit Interessenten in
+          Kontakt zu treten (Art. 6 Abs. 1 lit. f DSGVO). Wenn Sie uns über Facebook schreiben, verarbeiten wir Ihre
+          Nachricht, um sie zu beantworten (Art. 6 Abs. 1 lit. b bzw. lit. f DSGVO). Weitere Informationen finden Sie
+          in der{' '}
+          <a
+            href="https://www.facebook.com/privacy/policy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2"
+          >
+            Datenschutzrichtlinie von Meta
+          </a>
+          .
+        </p>
+      </Section>
+
+      <Section title="6. Speicherdauer">
         <ul className="ms-6 list-disc space-y-2">
           <li>
             Abgelehnte oder nicht zustande gekommene Anfragen löschen wir spätestens 180 Tage nach Abschluss
@@ -114,7 +157,7 @@ function Datenschutz() {
         </ul>
       </Section>
 
-      <Section title="6. Ihre Rechte">
+      <Section title="7. Ihre Rechte">
         <p>
           Sie haben das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der
           Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch gegen Verarbeitungen auf Grundlage
@@ -127,7 +170,7 @@ function Datenschutz() {
         </p>
       </Section>
 
-      <Section title="7. Pflicht zur Bereitstellung">
+      <Section title="8. Pflicht zur Bereitstellung">
         <p>
           Für ein Angebot benötigen wir die als Pflichtfelder markierten Angaben. Ohne sie können wir Ihre Anfrage
           nicht bearbeiten.

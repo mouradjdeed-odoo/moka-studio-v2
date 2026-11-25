@@ -33,14 +33,21 @@ Ein Datenschutzbeauftragter ist nicht bestellt, da die gesetzlichen Voraussetzun
 ## 4. Angebote, elektronische Unterschrift und Verträge
 Angebote stellen wir Ihnen über ein Kundenportal in Odoo bereit. Wenn Sie ein Angebot oder einen Vertrag online unterschreiben, speichern wir Ihre Unterschrift, Name, Datum, Uhrzeit und IP-Adresse als Nachweis des Vertragsschlusses (Art. 6 Abs. 1 lit. b und lit. f DSGVO).
 
-## 5. Speicherdauer
+## 5. Unsere Facebook-Seite
+Wir betreiben eine Unternehmensseite auf Facebook (https://www.facebook.com/profile.php?id=61597015763533; Anbieter: Meta Platforms Ireland Limited, Merrion Road, Dublin 4, D04 X2K5, Irland). Auf dieser Website ist Facebook nur als einfacher Link eingebunden: Beim Aufruf unserer Website werden keine Daten an Meta übertragen. Erst wenn Sie den Link anklicken, gelangen Sie zu Facebook.
+
+Wenn Sie unsere Facebook-Seite besuchen, verarbeitet Meta Ihre Daten (zum Beispiel IP-Adresse, Geräte- und Nutzungsdaten, Cookies) nach eigenen Bedingungen, auch in den USA. Für die Seitenstatistiken („Insights“) sind wir mit Meta gemeinsam verantwortlich (Art. 26 DSGVO). Meta übernimmt nach der Vereinbarung über die gemeinsame Verantwortlichkeit (https://www.facebook.com/legal/terms/page_controller_addendum) die primäre Verantwortung für diese Verarbeitung und für die Erfüllung Ihrer Rechte; Sie können sich aber auch an uns wenden. Wir erhalten nur zusammengefasste Statistiken, die keinen Rückschluss auf einzelne Personen zulassen.
+
+Rechtsgrundlage ist unser berechtigtes Interesse, unser Unternehmen darzustellen und mit Interessenten in Kontakt zu treten (Art. 6 Abs. 1 lit. f DSGVO). Wenn Sie uns über Facebook schreiben, verarbeiten wir Ihre Nachricht, um sie zu beantworten (Art. 6 Abs. 1 lit. b bzw. lit. f DSGVO). Weitere Informationen: Datenschutzrichtlinie von Meta (https://www.facebook.com/privacy/policy).
+
+## 6. Speicherdauer
 - Abgelehnte oder nicht zustande gekommene Anfragen löschen wir spätestens 180 Tage nach Abschluss automatisch, einschließlich der hochgeladenen Dateien.
 - Daten zu Angeboten, Aufträgen und Rechnungen bewahren wir entsprechend den gesetzlichen Aufbewahrungsfristen auf (bis zu 10 Jahre nach § 147 AO und § 257 HGB) und löschen sie danach.
 
-## 6. Ihre Rechte
+## 7. Ihre Rechte
 Sie haben das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch gegen Verarbeitungen auf Grundlage berechtigter Interessen (Art. 21 DSGVO). Eine erteilte Einwilligung können Sie jederzeit für die Zukunft widerrufen.
 
 Sie können sich bei einer Datenschutz-Aufsichtsbehörde beschweren, zum Beispiel bei der Berliner Beauftragten für Datenschutz und Informationsfreiheit, Alt-Moabit 59–61, 10555 Berlin.
 
-## 7. Pflicht zur Bereitstellung
+## 8. Pflicht zur Bereitstellung
 Für ein Angebot benötigen wir die als Pflichtfelder markierten Angaben. Ohne sie können wir Ihre Anfrage nicht bearbeiten.
