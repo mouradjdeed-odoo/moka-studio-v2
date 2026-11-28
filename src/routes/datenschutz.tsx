@@ -52,7 +52,8 @@ function Datenschutz() {
         </p>
         <p>
           <strong>Cookies und Tracking:</strong> Diese Website setzt keine Cookies, speichert nichts in Ihrem Browser
-          und verwendet keine Analyse- oder Tracking-Dienste.
+          und verwendet keine Analyse- oder Tracking-Dienste. Eine Ausnahme gilt nur, wenn Sie selbst den Chat starten
+          (siehe Abschnitt 6).
         </p>
       </Section>
 
@@ -142,7 +143,19 @@ function Datenschutz() {
         </p>
       </Section>
 
-      <Section title="6. Speicherdauer">
+      <Section title="6. Chat auf unserer Website">
+        <p>
+          Auf unserer Website können Sie über einen Chat mit uns Kontakt aufnehmen. Der Chat ist zunächst nur ein Button unserer Website: Erst wenn Sie ihn öffnen und auf „Chat starten“ klicken, wird der Chat-Dienst unseres Kundensystems Odoo (Odoo S.A., Chaussée de Namur 40, 1367 Ramillies, Belgien) geladen. Ab diesem Zeitpunkt werden Ihre IP-Adresse und technische Daten Ihres Browsers an Odoo übertragen, und Odoo speichert in Ihrem Browser eine Kennung (Cookie bzw. lokaler Speicher), damit die Unterhaltung erhalten bleibt. Diese Speicherung ist für den von Ihnen gewünschten Chat unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG).
+        </p>
+        <p>
+          Im Chat antwortet zunächst ein automatischer Assistent mit vorgegebenen Texten; es wird keine künstliche Intelligenz eingesetzt. Verarbeitet werden Ihre Nachrichten und die Angaben, die Sie selbst machen (zum Beispiel E-Mail-Adresse und Telefonnummer). Wenn Sie uns Ihr Anliegen schildern, legen wir daraus eine Anfrage in unserem Kundensystem an. Zweck ist die Beantwortung Ihrer Fragen und die Bearbeitung Ihrer Anfrage (Art. 6 Abs. 1 lit. b DSGVO, vorvertragliche Maßnahmen, sowie lit. f DSGVO, berechtigtes Interesse an einer schnellen Kommunikation). Mit Odoo besteht ein Vertrag zur Auftragsverarbeitung (siehe Abschnitt 3).
+        </p>
+        <p>
+          Chatverläufe löschen wir spätestens 180 Tage nach dem letzten Beitrag. Ist aus dem Chat eine Anfrage entstanden, gelten für diese die Fristen in Abschnitt 7.
+        </p>
+      </Section>
+
+      <Section title="7. Speicherdauer">
         <ul className="ms-6 list-disc space-y-2">
           <li>
             Abgelehnte oder nicht zustande gekommene Anfragen löschen wir spätestens 180 Tage nach Abschluss
@@ -155,7 +168,7 @@ function Datenschutz() {
         </ul>
       </Section>
 
-      <Section title="7. Ihre Rechte">
+      <Section title="8. Ihre Rechte">
         <p>
           Sie haben das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der
           Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch gegen Verarbeitungen auf Grundlage
@@ -168,7 +181,7 @@ function Datenschutz() {
         </p>
       </Section>
 
-      <Section title="8. Pflicht zur Bereitstellung">
+      <Section title="9. Pflicht zur Bereitstellung">
         <p>
           Für ein Angebot benötigen wir die als Pflichtfelder markierten Angaben. Ohne sie können wir Ihre Anfrage
           nicht bearbeiten.

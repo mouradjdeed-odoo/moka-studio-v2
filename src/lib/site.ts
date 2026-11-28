@@ -14,6 +14,9 @@ export const site = {
   /** Facebook page. Replace with the short URL (facebook.com/<username>) once a username is set. */
   facebook: 'https://www.facebook.com/profile.php?id=61597015763533',
   instagram: 'https://www.instagram.com/mokaobjektservice/',
+  /** Odoo Live Chat (website chat), see automation/odoo/livechat_setup.py. */
+  chatServer: 'https://moka-service-ug.odoo.com',
+  chatChannel: 1,
   /** Make scenario "MOKA – Neue Anfrage" (see automation/README.md). */
   quoteWebhook: 'https://hook.eu1.make.com/8hl0vmgwqtdacmgqathaj58i9jbfk3sg',
   city: '10789 Berlin',

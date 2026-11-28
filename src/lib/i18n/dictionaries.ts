@@ -392,6 +392,16 @@ const de = {
     imprint: 'Impressum',
     privacy: 'Datenschutz',
   },
+  chat: {
+    open: 'Chat öffnen',
+    title: 'Chat mit MOKA',
+    text: 'Unser digitaler Assistent beantwortet Fragen zu unseren Leistungen und nimmt Ihr Anliegen auf. Erst wenn Sie den Chat starten, wird der Chat-Dienst unseres Kundensystems Odoo geladen; dabei werden Daten an Odoo übertragen.',
+    note: '',
+    privacy: 'Datenschutzerklärung',
+    start: 'Chat starten',
+    loading: 'Chat wird geladen …',
+    close: 'Schließen',
+  },
 }
 
 export type Dictionary = typeof de
@@ -790,6 +800,16 @@ const en: Dictionary = {
     imprint: 'Imprint',
     privacy: 'Privacy',
   },
+  chat: {
+    open: 'Open chat',
+    title: 'Chat with MOKA',
+    text: 'Our digital assistant answers questions about our services and takes down your request. The chat service of our customer system Odoo is only loaded when you start the chat; data is then transferred to Odoo.',
+    note: 'The assistant replies in German.',
+    privacy: 'Privacy policy',
+    start: 'Start chat',
+    loading: 'Loading chat …',
+    close: 'Close',
+  },
 }
 
 const ar: Dictionary = {
@@ -1179,6 +1199,16 @@ const ar: Dictionary = {
     rights: 'جميع الحقوق محفوظة.',
     imprint: 'بيانات الناشر',
     privacy: 'الخصوصية',
+  },
+  chat: {
+    open: 'فتح المحادثة',
+    title: 'محادثة مع MOKA',
+    text: 'يجيب مساعدنا الرقمي عن أسئلتك حول خدماتنا ويسجّل طلبك. لا تُحمَّل خدمة المحادثة من نظام عملائنا Odoo إلا عندما تبدأ المحادثة، وعندها تُنقل البيانات إلى Odoo.',
+    note: 'المساعد يجيب باللغة الألمانية.',
+    privacy: 'سياسة الخصوصية',
+    start: 'ابدأ المحادثة',
+    loading: 'جارٍ تحميل المحادثة …',
+    close: 'إغلاق',
   },
 }
 

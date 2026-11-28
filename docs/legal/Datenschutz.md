@@ -16,7 +16,7 @@ Ein Datenschutzbeauftragter ist nicht bestellt, da die gesetzlichen Voraussetzun
 
 **Schriftarten:** Alle Schriftarten sind lokal auf unserem Server eingebunden. Es wird keine Verbindung zu Google oder anderen Schriftanbietern aufgebaut.
 
-**Cookies und Tracking:** Diese Website setzt keine Cookies, speichert nichts in Ihrem Browser und verwendet keine Analyse- oder Tracking-Dienste.
+**Cookies und Tracking:** Diese Website setzt keine Cookies, speichert nichts in Ihrem Browser und verwendet keine Analyse- oder Tracking-Dienste. Eine Ausnahme gilt nur, wenn Sie selbst den Chat starten (siehe Abschnitt 6).
 
 ## 3. Anfrageformular (Angebotsanfrage)
 **Welche Daten:** Name, Firma (optional), E-Mail, Telefon (optional), Objekt- und Rechnungsadresse, Angaben zum Objekt und zur gewünschten Leistung, Ihre Nachricht sowie hochgeladene Fotos oder PDF-Dateien.
@@ -40,14 +40,21 @@ Wenn Sie unsere Seiten dort besuchen, verarbeitet Meta Ihre Daten (zum Beispiel 
 
 Rechtsgrundlage ist unser berechtigtes Interesse, unser Unternehmen darzustellen und mit Interessenten in Kontakt zu treten (Art. 6 Abs. 1 lit. f DSGVO). Wenn Sie uns über Facebook oder Instagram schreiben, verarbeiten wir Ihre Nachricht, um sie zu beantworten (Art. 6 Abs. 1 lit. b bzw. lit. f DSGVO). Weitere Informationen: Datenschutzrichtlinie von Meta (https://www.facebook.com/privacy/policy) und von Instagram (https://privacycenter.instagram.com/policy).
 
-## 6. Speicherdauer
+## 6. Chat auf unserer Website
+Auf unserer Website können Sie über einen Chat mit uns Kontakt aufnehmen. Der Chat ist zunächst nur ein Button unserer Website: Erst wenn Sie ihn öffnen und auf „Chat starten“ klicken, wird der Chat-Dienst unseres Kundensystems Odoo (Odoo S.A., Chaussée de Namur 40, 1367 Ramillies, Belgien) geladen. Ab diesem Zeitpunkt werden Ihre IP-Adresse und technische Daten Ihres Browsers an Odoo übertragen, und Odoo speichert in Ihrem Browser eine Kennung (Cookie bzw. lokaler Speicher), damit die Unterhaltung erhalten bleibt. Diese Speicherung ist für den von Ihnen gewünschten Chat unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG).
+
+Im Chat antwortet zunächst ein automatischer Assistent mit vorgegebenen Texten; es wird keine künstliche Intelligenz eingesetzt. Verarbeitet werden Ihre Nachrichten und die Angaben, die Sie selbst machen (zum Beispiel E-Mail-Adresse und Telefonnummer). Wenn Sie uns Ihr Anliegen schildern, legen wir daraus eine Anfrage in unserem Kundensystem an. Zweck ist die Beantwortung Ihrer Fragen und die Bearbeitung Ihrer Anfrage (Art. 6 Abs. 1 lit. b DSGVO, vorvertragliche Maßnahmen, sowie lit. f DSGVO, berechtigtes Interesse an einer schnellen Kommunikation). Mit Odoo besteht ein Vertrag zur Auftragsverarbeitung (siehe Abschnitt 3).
+
+Chatverläufe löschen wir spätestens 180 Tage nach dem letzten Beitrag. Ist aus dem Chat eine Anfrage entstanden, gelten für diese die Fristen in Abschnitt 7.
+
+## 7. Speicherdauer
 - Abgelehnte oder nicht zustande gekommene Anfragen löschen wir spätestens 180 Tage nach Abschluss automatisch, einschließlich der hochgeladenen Dateien.
 - Daten zu Angeboten, Aufträgen und Rechnungen bewahren wir entsprechend den gesetzlichen Aufbewahrungsfristen auf (bis zu 10 Jahre nach § 147 AO und § 257 HGB) und löschen sie danach.
 
-## 7. Ihre Rechte
+## 8. Ihre Rechte
 Sie haben das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch gegen Verarbeitungen auf Grundlage berechtigter Interessen (Art. 21 DSGVO). Eine erteilte Einwilligung können Sie jederzeit für die Zukunft widerrufen.
 
 Sie können sich bei einer Datenschutz-Aufsichtsbehörde beschweren, zum Beispiel bei der Berliner Beauftragten für Datenschutz und Informationsfreiheit, Alt-Moabit 59–61, 10555 Berlin.
 
-## 8. Pflicht zur Bereitstellung
+## 9. Pflicht zur Bereitstellung
 Für ein Angebot benötigen wir die als Pflichtfelder markierten Angaben. Ohne sie können wir Ihre Anfrage nicht bearbeiten.
