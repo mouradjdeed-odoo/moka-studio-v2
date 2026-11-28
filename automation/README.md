@@ -77,3 +77,15 @@ die Clear-Felder in `x_moka_clear_input`, die Build-Felder in `x_moka_build_inpu
 
 Antwort: `{"ok": true, "ref": "A-00012"}`. Make-Webhooks nehmen höchstens ca. 5 MB pro Anfrage an;
 `src/lib/quote-submit.ts` verkleinert Fotos deshalb im Browser (max. 1600 px, JPEG) und begrenzt die Anhänge auf 3,4 MB.
+
+## Website-Chat (Odoo Live Chat)
+
+- Kanal „MOKA Website“ (Live Chat, id 1) mit dem regelbasierten Chatbot „MOKA Assistent“ (keine KI, keine Preise).
+- Einrichtung und Änderungen der Texte: `odoo/livechat_setup.py` (idempotent, baut die Chatbot-Schritte neu auf).
+- Pfade: „Angebot anfragen“ leitet zum Anfrageformular (`/#kontakt`); „Frage zu unseren Leistungen“, „Rückruf
+  vereinbaren“ und „Sonstiges“ fragen Anliegen, E-Mail (bei Rückruf auch Telefon) ab und legen einen Lead im
+  Team „Sales“ an.
+- Die Website lädt den Chat erst nach Klick auf „Chat starten“ (`src/components/chat-launcher.tsx`, Zwei-Klick-Lösung,
+  siehe Datenschutzerklärung Abschnitt 6).
+- Odoo-Besonderheit: Ein Schritt erscheint nur, wenn für jede Frage, zu der seine Auslöser gehören, eine passende Antwort
+  gewählt wurde. Die Auslöser eines Schritts müssen deshalb alle aus derselben Frage stammen.
