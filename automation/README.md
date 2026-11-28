@@ -82,9 +82,12 @@ Antwort: `{"ok": true, "ref": "A-00012"}`. Make-Webhooks nehmen höchstens ca. 5
 
 - Kanal „MOKA Website“ (Live Chat, id 1) mit dem regelbasierten Chatbot „MOKA Assistent“ (keine KI, keine Preise).
 - Einrichtung und Änderungen der Texte: `odoo/livechat_setup.py` (idempotent, baut die Chatbot-Schritte neu auf).
-- Pfade: „Angebot anfragen“ leitet zum Anfrageformular (`/#kontakt`); „Frage zu unseren Leistungen“, „Rückruf
-  vereinbaren“ und „Sonstiges“ fragen Anliegen, E-Mail (bei Rückruf auch Telefon) ab und legen einen Lead im
-  Team „Sales“ an.
+- Pfade: „Angebot anfragen“ zeigt den Link zum Anfrageformular (`/#kontakt`); „Frage zu unseren Leistungen“ zeigt
+  die Bereiche; „Rückruf vereinbaren“ und „Sonstiges“ fragen Anliegen, E-Mail (bei Rückruf auch Telefon) ab und
+  legen einen Lead im Team „Sales“ an.
+- Navigation: nach jeder Bereichsinfo „Frage stellen“, „Anderen Bereich ansehen“ (bis zu 3-mal hintereinander) und
+  „Zurück zum Hauptmenü“. Letzteres öffnet `/?chat=neu`; die Website vergisst dann den alten Chat und startet neu.
+- Auf der Website: gibt es schon einen Chat, bietet die Karte „Chat fortsetzen“ und „Neuen Chat starten“.
 - Die Website lädt den Chat erst nach Klick auf „Chat starten“ (`src/components/chat-launcher.tsx`, Zwei-Klick-Lösung,
   siehe Datenschutzerklärung Abschnitt 6).
 - Odoo-Besonderheit: Ein Schritt erscheint nur, wenn für jede Frage, zu der seine Auslöser gehören, eine passende Antwort

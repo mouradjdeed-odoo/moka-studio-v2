@@ -1,13 +1,16 @@
 """Idempotent setup of the website chat: Odoo Live Chat channel + scripted chatbot "MOKA Assistent".
 
-The chatbot answers questions about the four units, sends quote requests to the website form and turns
-other requests into CRM leads (team "Sales"). It never quotes prices. Texts are German with English
-translations (Odoo picks the visitor's language).
+The chatbot answers questions about the four units, points quote requests to the website form and turns
+other requests into CRM leads (team "Sales"). It never quotes prices. The texts are German (see EN_FALLBACK).
+
+Navigation: an Odoo chatbot only runs forward. "Anderen Bereich ansehen" (back to the last list) is built by
+repeating the area menu up to LEVELS times; "Zurück zum Hauptmenü" sends the visitor to <site>/?chat=neu,
+where the website (src/components/chat-launcher.tsx) clears the old chat and starts a new one.
 
 Usage: ODOO_URL=https://moka-service-ug.odoo.com ODOO_DB=moka-service-ug ODOO_API_KEY=... python3 livechat_setup.py
 Running it again rebuilds the chatbot steps from the definitions below.
 """
-import base64, json, os, pathlib, urllib.error, urllib.request
+import base64, json, os, pathlib, time, urllib.error, urllib.request
 
 URL = os.environ.get('ODOO_URL', 'https://moka-service-ug.odoo.com').rstrip('/')
 DB = os.environ.get('ODOO_DB', 'moka-service-ug')
@@ -21,17 +24,28 @@ EN_FALLBACK = os.environ.get('MOKA_CHAT_EN', '') == '1'
 
 CHANNEL_NAME = 'MOKA Website'
 SCRIPT_TITLE = 'MOKA Assistent'
+LEVELS = 3  # how often "Anderen Bereich ansehen" can be chosen in a row
 
 
 def call(model, method, **kw):
-    req = urllib.request.Request(
-        f'{URL}/json/2/{model}/{method}', data=json.dumps(kw).encode(), method='POST',
-        headers={'Content-Type': 'application/json', 'X-Odoo-Database': DB, 'Authorization': f'Bearer {KEY}'})
-    try:
-        with urllib.request.urlopen(req, timeout=120) as r:
-            return json.loads(r.read())
-    except urllib.error.HTTPError as e:
-        raise SystemExit(f'{model}.{method} failed: {json.loads(e.read()).get("message", e)}')
+    """JSON-2 call; retries briefly on rate limits and gateway errors (many small calls in a row)."""
+    for attempt in range(5):
+        req = urllib.request.Request(
+            f'{URL}/json/2/{model}/{method}', data=json.dumps(kw).encode(), method='POST',
+            headers={'Content-Type': 'application/json', 'X-Odoo-Database': DB, 'Authorization': f'Bearer {KEY}'})
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            body = e.read()
+            if e.code in (429, 502, 503, 504) and attempt < 4:
+                time.sleep(2 * (attempt + 1))
+                continue
+            try:
+                message = json.loads(body).get('message', e)
+            except ValueError:
+                message = f'HTTP {e.code}'
+            raise SystemExit(f'{model}.{method} failed: {message}')
 
 
 def p(text):
@@ -40,11 +54,36 @@ def p(text):
 
 PRIVACY = f'<a href="{SITE}/datenschutz" target="_blank">'
 QUOTE = f'{SITE}/#kontakt'
+RESTART = f'{SITE}/?chat=neu'
+MAIN = ('Zurück zum Hauptmenü', 'Back to the main menu', RESTART)
+ASK = ('Frage stellen', 'Ask a question', '')
+
+UNITS = [
+    ('clean', 'MOKA Clean',
+     'MOKA Clean: Treppenhausreinigung, Unterhaltsreinigung, Fenster- und Endreinigung, Hausmeisterservice, '
+     'Winterdienst, Mülltonnenservice und Gartenpflege – in Berlin und Umgebung.',
+     'MOKA Clean: stairwell and maintenance cleaning, window and final cleaning, caretaker service, '
+     'winter service, bin service and garden care – in Berlin and the surrounding area.'),
+    ('clear', 'MOKA Clear',
+     'MOKA Clear: Entrümpelung, Haushaltsauflösung und Umzug – auch Keller, Dachboden und Garage.',
+     'MOKA Clear: clearance, house clearance and removals – including cellars, attics and garages.'),
+    ('build', 'MOKA Build',
+     'MOKA Build: Renovierung, Malerarbeiten, Bodenbeläge, Trockenbau, Sanierung und Glasfaser-Hausverkabelung. '
+     'Zulassungspflichtige Handwerksleistungen führen eingetragene Meisterbetriebe bzw. qualifizierte '
+     'Partnerunternehmen aus.',
+     'MOKA Build: renovation, painting, flooring, drywall, refurbishment and in-house fibre cabling. '
+     'Licensed trade work is carried out by registered master businesses or qualified partners.'),
+    ('verwaltung', 'MOKA Verwaltung',
+     'MOKA Verwaltung: Mietverwaltung, WEG-Verwaltung, Sondereigentumsverwaltung und technische Objektbetreuung – '
+     'durch Verwalter mit Erlaubnis nach § 34c GewO bzw. zertifizierte Partnerunternehmen.',
+     'MOKA Verwaltung: rental management, condominium (WEG) management, management of individual units and '
+     'technical property support – by managers licensed under § 34c GewO or certified partners.'),
+]
 
 # Each step: key, type, (de, en) message, triggering answer keys, answers [(key, de, en, redirect)].
 # Odoo shows a step only if, for EVERY question its triggers belong to, one of them was chosen. So the triggers
-# of one step must all come from the same question. The closing steps are triggered by every first answer except
-# "Angebot anfragen", which only redirects to the quote form and ends the conversation.
+# of one step always come from a single question. The closing steps have no triggers: every path that does not
+# leave the chat (quote form link, main menu) ends there.
 STEPS = [
     ('hello', 'text',
      (p(f'Hallo! Ich bin der digitale Assistent von MOKA Objektservice. Ich helfe Ihnen, schnell die richtige '
@@ -52,60 +91,56 @@ STEPS = [
       p(f'Hello! I am the digital assistant of MOKA Objektservice and will help you find the right place quickly. '
         f'Privacy information: {PRIVACY}privacy policy</a>')), [], []),
     ('topic', 'question_selection', (p('Wobei können wir Ihnen helfen?'), p('How can we help you?')), [], [
-        ('quote', 'Angebot anfragen', 'Request a quote', QUOTE),
+        ('quote', 'Angebot anfragen', 'Request a quote', ''),
         ('services', 'Frage zu unseren Leistungen', 'Question about our services', ''),
         ('callback', 'Rückruf vereinbaren', 'Request a call back', ''),
         ('other', 'Sonstiges', 'Something else', ''),
     ]),
-    ('unit', 'question_selection', (p('Zu welchem Bereich?'), p('Which area?')), ['services'], [
-        ('clean', 'MOKA Clean', 'MOKA Clean', ''),
-        ('clear', 'MOKA Clear', 'MOKA Clear', ''),
-        ('build', 'MOKA Build', 'MOKA Build', ''),
-        ('verwaltung', 'MOKA Verwaltung', 'MOKA Verwaltung', ''),
-    ]),
-    ('info_clean', 'text',
-     (p('MOKA Clean: Treppenhausreinigung, Unterhaltsreinigung, Fenster- und Endreinigung, Hausmeisterservice, '
-        'Winterdienst, Mülltonnenservice und Gartenpflege – in Berlin und Umgebung.'),
-      p('MOKA Clean: stairwell and maintenance cleaning, window and final cleaning, caretaker service, '
-        'winter service, bin service and garden care – in Berlin and the surrounding area.')), ['clean'], []),
-    ('info_clear', 'text',
-     (p('MOKA Clear: Entrümpelung, Haushaltsauflösung und Umzug – auch Keller, Dachboden und Garage.'),
-      p('MOKA Clear: clearance, house clearance and removals – including cellars, attics and garages.')),
-     ['clear'], []),
-    ('info_build', 'text',
-     (p('MOKA Build: Renovierung, Malerarbeiten, Bodenbeläge, Trockenbau, Sanierung und '
-        'Glasfaser-Hausverkabelung. Zulassungspflichtige Handwerksleistungen führen eingetragene Meisterbetriebe '
-        'bzw. qualifizierte Partnerunternehmen aus.'),
-      p('MOKA Build: renovation, painting, flooring, drywall, refurbishment and in-house fibre cabling. '
-        'Licensed trade work is carried out by registered master businesses or qualified partners.')),
-     ['build'], []),
-    ('info_verwaltung', 'text',
-     (p('MOKA Verwaltung: Mietverwaltung, WEG-Verwaltung, Sondereigentumsverwaltung und technische '
-        'Objektbetreuung – durch Verwalter mit Erlaubnis nach § 34c GewO bzw. zertifizierte Partnerunternehmen.'),
-      p('MOKA Verwaltung: rental management, condominium (WEG) management, management of individual units and '
-        'technical property support – by managers licensed under § 34c GewO or certified partners.')),
-     ['verwaltung'], []),
-    ('services_hint', 'text',
-     (p(f'Für ein unverbindliches Richtangebot nutzen Sie am besten unser <a href="{QUOTE}" target="_blank">'
-        'Anfrageformular</a> – Sie erhalten es innerhalb von 24 Stunden. Oder stellen Sie uns hier Ihre Frage.'),
-      p(f'For a free estimate, please use our <a href="{QUOTE}" target="_blank">request form</a> – you will '
-        'receive it within 24 hours. Or ask us your question here.')), ['services'], []),
+    ('quote_info', 'text',
+     (p(f'Gern! Am schnellsten geht es über unser <a href="{QUOTE}">Anfrageformular</a>. Sie erhalten innerhalb '
+        'von 24 Stunden ein unverbindliches Richtangebot.'),
+      p(f'Gladly! The quickest way is our <a href="{QUOTE}">request form</a>. You will receive a free estimate '
+        'within 24 hours.')), ['quote'], []),
+    ('quote_next', 'question_selection', (p('Kann ich sonst noch helfen?'), p('Can I help with anything else?')),
+     ['quote'], [('quote_ask',) + ASK, ('quote_main',) + MAIN]),
+]
+for level in range(1, LEVELS + 1):
+    menu_trigger = ['services'] if level == 1 else [f'more{level - 1}']
+    unit_keys = [f'{key}{level}' for key, *_ in UNITS]
+    STEPS.append((f'unit{level}', 'question_selection',
+                  (p('Zu welchem Bereich?' if level == 1 else 'Welcher Bereich interessiert Sie?'),
+                   p('Which area?' if level == 1 else 'Which area are you interested in?')),
+                  menu_trigger, [(f'{key}{level}', name, name, '') for key, name, *_ in UNITS]))
+    for key, name, de, en in UNITS:
+        STEPS.append((f'info_{key}{level}', 'text', (p(de), p(en)), [f'{key}{level}'], []))
+    STEPS.append((f'hint{level}', 'text',
+                  (p(f'Für ein unverbindliches Richtangebot nutzen Sie am besten unser <a href="{QUOTE}">'
+                     'Anfrageformular</a> – Sie erhalten es innerhalb von 24 Stunden.'),
+                   p(f'For a free estimate, please use our <a href="{QUOTE}">request form</a> – you will receive it '
+                     'within 24 hours.')), unit_keys, []))
+    answers = [(f'ask{level}',) + ASK]
+    if level < LEVELS:
+        answers.append((f'more{level}', 'Anderen Bereich ansehen', 'See another area', ''))
+    answers.append((f'main{level}',) + MAIN)
+    STEPS.append((f'next{level}', 'question_selection',
+                  (p('Wie möchten Sie weitermachen?'), p('How would you like to continue?')), unit_keys, answers))
+STEPS += [
     ('describe', 'free_input_multi',
      (p('Bitte beschreiben Sie kurz Ihr Anliegen – zum Beispiel Ort oder Bezirk des Objekts und die gewünschte '
         'Leistung.'),
       p('Please describe your request briefly – for example the location of the property and the service you '
-        'need.')), ['services', 'callback', 'other'], []),
+        'need.')), [], []),
     ('email', 'question_email',
-     (p('An welche E-Mail-Adresse dürfen wir Ihnen antworten?'), p('Which email address may we reply to?')),
-     ['services', 'callback', 'other'], []),
+     (p('An welche E-Mail-Adresse dürfen wir Ihnen antworten?'), p('Which email address may we reply to?')), [], []),
     ('phone', 'question_phone',
      (p('Unter welcher Telefonnummer erreichen wir Sie?'), p('Which phone number can we reach you on?')),
      ['callback'], []),
     ('lead', 'create_lead',
      (p('Vielen Dank! Ihre Anfrage ist bei uns eingegangen. Wir melden uns innerhalb von 24 Stunden '
-        '(Montag bis Freitag) bei Ihnen.'),
-      p('Thank you! We have received your request and will get back to you within 24 hours (Monday to Friday).')),
-     ['services', 'callback', 'other'], []),
+        '(Montag bis Freitag) bei Ihnen. Über den Button unten rechts können Sie jederzeit einen neuen Chat '
+        'starten.'),
+      p('Thank you! We have received your request and will get back to you within 24 hours (Monday to Friday). '
+        'You can start a new chat at any time with the button at the bottom right.')), [], []),
 ]
 
 
