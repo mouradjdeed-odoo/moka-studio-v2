@@ -13,6 +13,7 @@ export const site = {
   street: 'Lietzenburger Straße 29',
   /** Facebook page. Replace with the short URL (facebook.com/<username>) once a username is set. */
   facebook: 'https://www.facebook.com/profile.php?id=61597015763533',
+  instagram: 'https://www.instagram.com/mokaobjektservice/',
   /** Make scenario "MOKA – Neue Anfrage" (see automation/README.md). */
   quoteWebhook: 'https://hook.eu1.make.com/8hl0vmgwqtdacmgqathaj58i9jbfk3sg',
   city: '10789 Berlin',
@@ -23,6 +24,7 @@ export type SocialNetwork = 'facebook' | 'instagram' | 'linkedin' | 'youtube'
 /** Round icons in the footer. Add a network here only once its account exists. */
 export const socialLinks: readonly { network: SocialNetwork; label: string; url: string }[] = [
   { network: 'facebook', label: 'Facebook', url: site.facebook },
+  { network: 'instagram', label: 'Instagram', url: site.instagram },
 ]
 
 export const FEATURE_ROTATION_MS = 4000
